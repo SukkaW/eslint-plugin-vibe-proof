@@ -46,6 +46,69 @@ export function isGlobalReference(
   return variable == null || variable.defs.length === 0;
 }
 
+/**
+ * Resolve the module an identifier was imported from, or `null` when it is not
+ * an import (a local declaration, a parameter, or a global).
+ *
+ * Resolution goes through scope analysis rather than matching the import
+ * statement by name, so aliases (`import { a as b }`) and shadowing are handled
+ * correctly.
+ */
+export function getImportSource(
+  sourceCode: TSESLint.SourceCode,
+  node: TSESTree.Node | null
+): string | null {
+  if (node?.type !== AST_NODE_TYPES.Identifier) return null;
+
+  const variable = findVariable(sourceCode.getScope(node), node);
+  const def = variable?.defs[0];
+  if (def?.parent?.type !== AST_NODE_TYPES.ImportDeclaration) return null;
+
+  const source = def.parent.source.value;
+  return typeof source === 'string' ? source : null;
+}
+
+/**
+ * The name an identifier was imported *as at the source* — the export's own
+ * name, not the local binding. For `import { a as b } from 'm'`, resolving `b`
+ * yields `'a'`. Returns `null` when the identifier is not a named import
+ * (default and namespace imports included, since neither names an export).
+ *
+ * Match on this rather than on `identifier.name` when a rule cares about which
+ * API is being called, so that aliasing does not hide it.
+ */
+export function getImportedName(
+  sourceCode: TSESLint.SourceCode,
+  node: TSESTree.Node | null
+): string | null {
+  if (node?.type !== AST_NODE_TYPES.Identifier) return null;
+
+  const variable = findVariable(sourceCode.getScope(node), node);
+  const def = variable?.defs[0];
+  if (def?.parent?.type !== AST_NODE_TYPES.ImportDeclaration) return null;
+  if (def.node.type !== AST_NODE_TYPES.ImportSpecifier) return null;
+
+  const { imported } = def.node;
+  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
+}
+
+/**
+ * Whether an identifier resolves to an import from `foxact` (any subpath).
+ *
+ * Rules that recommend a `foxact` API use this to avoid second-guessing an
+ * equivalent hook from another library: advice like "use
+ * `create-local-storage-state` instead" only applies to `foxact`'s own hook,
+ * and a same-named hook from `react-use` or `usehooks-ts` is a different API
+ * that the user has already solved the problem with.
+ */
+export function isFoxactImport(
+  sourceCode: TSESLint.SourceCode,
+  node: TSESTree.Node | null
+): boolean {
+  const source = getImportSource(sourceCode, node);
+  return source === 'foxact' || (source?.startsWith('foxact/') ?? false);
+}
+
 // Identifier / this, or a non-computed member chain on one — an expression
 // that is cheap and side-effect-free to repeat in an autofix.
 export function isSimpleTarget(node: TSESTree.Node): boolean {

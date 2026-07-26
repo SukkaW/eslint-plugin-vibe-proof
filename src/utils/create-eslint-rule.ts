@@ -2,8 +2,6 @@ import type { TSESLint, ParserServices, ParserServicesWithTypeInformation } from
 
 export type { RuleContext } from '@typescript-eslint/utils/ts-eslint';
 
-const BASE_URL = 'https://eslint-plugin.skk.moe/src/rules/';
-
 interface Metadata<MessageIDs extends string, PluginDocs = unknown> extends TSESLint.RuleMetaData<MessageIDs, PluginDocs & { recommended?: TSESLint.RuleRecommendation }> {
   hidden?: boolean
 }
@@ -35,9 +33,6 @@ export function createRule<
   TMessageIDs extends string,
   PluginDocs = unknown
 >({ name, meta, create, resolveOptions }: RuleModule<TResolvedOptions, TOptions, TMessageIDs, PluginDocs>): ExportedRuleModule<TOptions, TMessageIDs> {
-  if (meta.docs) {
-    meta.docs.url ??= new URL(name, BASE_URL).href;
-  }
   return {
     name,
     meta,
@@ -59,10 +54,9 @@ export function ensureParserWithTypeInformation(
   parserServices: Partial<ParserServices> | undefined
 ): asserts parserServices is ParserServicesWithTypeInformation {
   if (!parserServices?.program) {
-    throw new Error('see https://typescript-eslint.io/docs/linting/type-linting');
+    throw new Error('It seems that you have not enabled type information for ESLint. See https://typescript-eslint.io/getting-started/typed-linting for more information.');
   }
 }
-
 export type SourceCodeWithScopeManager = TSESLint.SourceCode & { scopeManager: TSESLint.Scope.ScopeManager };
 
 export function isSourceCodeWithScopeManager(
