@@ -1,0 +1,66 @@
+{
+  "name": "eslint-plugin-vibe-proof",
+  "version": "1.0.0",
+  "description": "An ESLint plugin that tries its best to prevent your coding agents from pooping your bed.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SukkaW/eslint-plugin-vibe-proof"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "lint": "eslint --format=sukka .",
+    "build": "bunchee --no-sourcemap --minify",
+    "test": "SWC_NODE_PROJECT=./tsconfig.test.json SWC_NODE_INLINE_SOURCE_MAP=1 nyc mocha -r=@swc-node/register ./src/**/*.test.ts --timeout 5000 --full-trace",
+    "prepare": "pnpm run build",
+    "prerelease": "pnpm run lint && pnpm run test && pnpm run build",
+    "release": "bumpp -r --all --commit \"release: %s\" --tag \"%s\""
+  },
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "vibe-proof"
+  ],
+  "author": "SukkaW <https://skk.moe>",
+  "license": "MIT",
+  "dependencies": {
+    "@typescript-eslint/types": "^8.65.0",
+    "@typescript-eslint/utils": "^8.65.0",
+    "foxts": "^5.8.0"
+  },
+  "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@swc-node/register": "^1.12.1",
+    "@swc/core": "^1.15.46",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.9.5",
+    "@typescript-eslint/rule-tester": "^8.65.0",
+    "bumpp": "^11.1.0",
+    "bunchee": "^6.12.0",
+    "eslint": "^10.7.0",
+    "eslint-config-sukka": "^8.13.6",
+    "eslint-formatter-sukka": "^8.13.6",
+    "mocha": "^11.7.6",
+    "nyc": "^18.0.0",
+    "ts-dedent": "^2.3.0",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.29.0",
+    "typescript": "*"
+  },
+  "packageManager": "pnpm@11.15.1"
+}

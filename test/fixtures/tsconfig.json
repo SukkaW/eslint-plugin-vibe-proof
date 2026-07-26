@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "jsx": "preserve",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": [
+    "*.ts",
+    "*.tsx"
+  ]
+}
