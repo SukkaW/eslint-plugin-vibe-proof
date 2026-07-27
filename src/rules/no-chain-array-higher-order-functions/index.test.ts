@@ -9,7 +9,16 @@ runTest({
     '[].map(() => {});',
     '[].filter(() => {});',
     '[].reduce(() => {}, 0).sort();',
-    '[].filter(() => {}).every(() => true);'
+    '[].filter(() => {}).every(() => true);',
+    // typed linting: chained methods on a non-array receiver
+    dedent`
+      interface QueryBuilder {
+        filter(callback: (value: number) => boolean): QueryBuilder,
+        map(callback: (value: number) => number): number[]
+      }
+      declare const qb: QueryBuilder;
+      qb.filter(() => true).map((v) => v);
+    `
   ],
   invalid: [
     {
@@ -49,6 +58,16 @@ runTest({
         arr
           .map(() => {})
           .filter(() => {}, 0);
+      `,
+      errors: [{
+        messageId: 'detected'
+      }]
+    },
+    // typed linting: receiver is a real array
+    {
+      code: dedent`
+        declare const list: number[];
+        list.map((v) => v + 1).filter((v) => v > 0);
       `,
       errors: [{
         messageId: 'detected'
