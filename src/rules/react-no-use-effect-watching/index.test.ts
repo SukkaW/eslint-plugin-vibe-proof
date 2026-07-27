@@ -201,6 +201,91 @@ runTest({
         }
       `,
       errors: [{ messageId: 'watchStateWithProps' }]
+    },
+    // setState inside a synchronous iteration callback — should be `useMemo` instead
+    {
+      code: dedent`
+        import { useEffect, useState } from "react";
+
+        function Component({ items }) {
+          const [value, setValue] = useState(0);
+          useEffect(() => {
+            items.forEach((item) => {
+              setValue(item);
+            });
+          }, [items]);
+          return value;
+        }
+      `,
+      errors: [{ messageId: 'watchStateWithProps' }]
+    },
+    {
+      code: dedent`
+        import { useEffect, useState } from "react";
+
+        function Component() {
+          const [items, setItems] = useState([]);
+          const [ids, setIds] = useState([]);
+          useEffect(() => {
+            items.map((item) => setIds((prev) => [...prev, item.id]));
+          }, [items]);
+          return ids;
+        }
+      `,
+      errors: [{ messageId: 'watchState' }]
+    },
+    // copied from https://octanejs.dev/ homepage, a typical incorrect usage of useEffect watching state
+    {
+      code: dedent`
+        import { useState, useEffect } from 'react';
+
+        export function Counter(props) {
+          const [count, setCount] = useState(0);
+
+
+            useEffect(() => {
+              console.log('count is now', count);
+            }, [count]);
+
+          <button onClick={() => setCount(count + 1)}>{'Count: ' + count}</button>
+        }
+      `,
+      errors: [{ messageId: 'watchStateOnly' }]
+    },
+    // synchronously mirroring one hook's value into another store
+    {
+      code: dedent`
+        import { useEffect } from 'react';
+        import { useA, useSetB } from './store';
+
+        function Component() {
+          const a = useA();
+          const setB = useSetB();
+
+          useEffect(() => setB(a), [setB, a]);
+
+          return null;
+        }
+      `,
+      errors: [{ messageId: 'watchState' }]
+    },
+    // notifying the parent about a state change via effect — belongs in the
+    // event handler that sets the state
+    {
+      code: dedent`
+        import { useState, useEffect } from 'react';
+
+        function Input({ onChange }) {
+          const [value, setValue] = useState('');
+
+          useEffect(() => {
+            onChange(value);
+          }, [value, onChange]);
+
+          return <input value={value} onInput={(e) => setValue(e.target.value)} />;
+        }
+      `,
+      errors: [{ messageId: 'watchStateOnly' }]
     }
   ],
   valid: [
@@ -357,6 +442,147 @@ runTest({
         return null;
       }
     `,
+    // lazy-load-once keyed on the watched state: the effect *writes* state
+    // (deferred), so it is a loader, not a watcher
+    dedent`
+      import { useState } from 'react';
+      import { useEffect } from 'foxact/use-abortable-effect';
+
+      let promise;
+
+      function Search() {
+        const [searchIndex, setSearchIndex] = useState(null);
+        const [searchIndexError, setSearchIndexError] = useState(null);
+
+        useEffect((signal) => {
+          if (!searchIndex) {
+            (async () => {
+              try {
+                promise ||= loadSearchIndexImpl();
+                const index = await promise;
+                if (signal.aborted) return;
+                setSearchIndex(() => index);
+              } catch (error) {
+                if (signal.aborted) return;
+                setSearchIndexError(error);
+              }
+            })();
+          }
+        }, [searchIndex]);
+
+        return searchIndex;
+      }
+    `,
+    // post-render DOM access — cannot run at the setState call site because
+    // the element is not committed yet
+    dedent`
+      import { useState, useEffect, useRef } from 'react';
+
+      function Modal() {
+        const inputRef = useRef(null);
+        const [isOpen, setIsOpen] = useState(false);
+
+        useEffect(() => {
+          if (isOpen) {
+            inputRef.current?.focus();
+          }
+        }, [isOpen]);
+
+        return <input ref={inputRef} onClick={() => setIsOpen(true)} />;
+      }
+    `,
+    // latest-ref pattern
+    dedent`
+      import { useState, useEffect, useRef } from 'react';
+
+      function Component() {
+        const [value, setValue] = useState(0);
+        const latest = useRef(value);
+
+        useEffect(() => {
+          latest.current = value;
+        }, [value]);
+
+        return <button onClick={() => setValue(value + 1)} />;
+      }
+    `,
+    // re-keyed subscription: cleanup returned
+    dedent`
+      import { useState, useEffect } from 'react';
+
+      function Ticker() {
+        const [delay, setDelay] = useState(1000);
+
+        useEffect(() => {
+          const id = setInterval(() => console.log('tick', delay), delay);
+          return () => clearInterval(id);
+        }, [delay]);
+
+        return <button onClick={() => setDelay(delay * 2)} />;
+      }
+    `,
+    // dep is a hook return, but not a strict use*State value slot
+    dedent`
+      import { useEffect } from 'react';
+      import { useIntersection } from './use-intersection';
+
+      function Component() {
+        const [setIntersection, hasIntersected] = useIntersection({ rootMargin: '0px' });
+
+        useEffect(() => {
+          if (hasIntersected) return;
+          runSideEffect();
+        }, [hasIntersected]);
+
+        return <div ref={setIntersection} />;
+      }
+    `,
+    // dep comes from an object-destructured hook return, not a use*State tuple
+    dedent`
+      import { useEffect } from 'react';
+      import { useEndpoints } from './endpoints';
+
+      function Component() {
+        const { data } = useEndpoints();
+
+        useEffect(() => {
+          if (data) {
+            runSideEffect(data);
+          }
+        }, [data]);
+
+        return null;
+      }
+    `,
+    // dep is a state *setter*, not state
+    dedent`
+      import { useEffect } from 'react';
+      import { useData, useSetData } from './data';
+
+      function Component() {
+        const data = useData();
+        const setData = useSetData();
+
+        useEffect(() => {
+          sideEffect.then(setData);
+        }, [setData]);
+
+        return data;
+      }
+    `,
+    // expression-bodied arrow may be returning a cleanup — skipped conservatively
+    dedent`
+      import { useState, useEffect } from 'react';
+      import { subscribeTo } from './pubsub';
+
+      function Component() {
+        const [topic, setTopic] = useState('news');
+
+        useEffect(() => subscribeTo(topic), [topic]);
+
+        return <button onClick={() => setTopic('sports')} />;
+      }
+    `,
     dedent`
       import { useEffect } from "foxact/use-abortable-effect";
       import { useImmer } from 'use-immer';
@@ -377,3 +603,59 @@ runTest({
     `
   ]
 }, {}, false);
+
+// with typed linting enabled, the receiver type of iteration-method callbacks
+// is inspected instead of relying on the method name alone
+runTest({
+  module: mod,
+  invalid: [
+    {
+      code: dedent`
+        import { useEffect, useState } from 'react';
+
+        function Component({ items }: { items: number[] }) {
+          const [value, setValue] = useState(0);
+          useEffect(() => {
+            items.forEach((item) => {
+              setValue(item);
+            });
+          }, [items]);
+          return value;
+        }
+      `,
+      errors: [{ messageId: 'watchStateWithProps' }]
+    },
+    {
+      code: dedent`
+        import { useEffect, useState } from 'react';
+
+        function Component({ ids }: { ids: Set<number> }) {
+          const [value, setValue] = useState(0);
+          useEffect(() => {
+            ids.forEach((id) => setValue(id));
+          }, [ids]);
+          return value;
+        }
+      `,
+      errors: [{ messageId: 'watchStateWithProps' }]
+    }
+  ],
+  valid: [
+    // a custom `.map` that is not a synchronous collection iteration
+    dedent`
+      import { useEffect, useState } from 'react';
+
+      interface Stream {
+        map(callback: (value: number) => void): void
+      }
+
+      function Component({ stream }: { stream: Stream }) {
+        const [value, setValue] = useState(0);
+        useEffect(() => {
+          stream.map((v) => setValue(v));
+        }, [stream]);
+        return value;
+      }
+    `
+  ]
+});
