@@ -1,12 +1,12 @@
 # eslint-plugin-vibe-proof
 
-You just can't really teach coding agents how to write the correct code using agent skills. The more agent skills you installed, faster models filling up the context window, faster your coding agents become stupid.
+You just can't really teach coding agents how to write the correct code using agent skills. The more agent skills you install, the faster models fill up the context window, and the faster your coding agents become stupid.
 
 ![LLM when the context window usage hit 60%: wojak trying to put a square block into a round hole meme](https://img.skk.moe/gh/eslint-plugin-vibe-proof-meme.jpg)
 
 And LLM is very good at forgetting things. Given a long last coding session and enough conversation compaction, your coding agents can and will eventually forget the important things like agent skills you installed, and even your `AGENTS.md`.
 
-What you really need is a deterministic and unforgiving feedback loop for your coding agents. Unit tests and static analysis are exactly that. When your coding agents poop your bed, linter will not forgive, linter will not forget, lingter will not yield, linter will not be constrained by the context window, linter will always detect and spit out the errors.
+What you really need is a deterministic and unforgiving feedback loop for your coding agents. Unit tests and static analysis are exactly that. When your coding agents poop your bed, linter will not forgive, linter will not forget, linter will not yield, linter will not be constrained by the context window, linter will always detect and spit out the errors.
 
 That's what `eslint-plugin-vibe-proof` is trying to accomplish here. It will detect the most common coding agents' mistakes and bad patterns, enforce LLM to write the correct code.
 
