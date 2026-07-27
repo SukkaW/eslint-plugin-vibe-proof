@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-vibe-proof",
-  "version": "1.1.0-beta.1",
+  "version": "1.1.0",
   "description": "An ESLint plugin that tries its best to prevent your coding agents from pooping your bed.",
   "repository": {
     "type": "git",
