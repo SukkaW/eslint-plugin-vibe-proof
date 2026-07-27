@@ -9,7 +9,7 @@ import type { TSESTree } from '@typescript-eslint/types';
 import { TSESLint, ASTUtils } from '@typescript-eslint/utils';
 
 const WATCH_MESSAGE = 'Do not call the set function of useState synchronously in an effect. Respond directly at where the change happens (the setState call site), or utilize event handlers/callbacks (like onSuccess, onError, onChange, etc.) provided by libraries. If it is a purely derived value, compute it within the render phase w/ `useMemo` (ensure single source of truth) instead of having separate states.';
-const WATCH_WITH_PROPS_MESSAGE = `${WATCH_MESSAGE} If this needs to reset state from outside, always prefer \`key\` to force-reset a component state, or use \`foxact/use-component-will-receive-update\` as your last resort to change internal state based on props change.`;
+const WATCH_WITH_PROPS_MESSAGE = `${WATCH_MESSAGE} If this needs to respond state from outside, always prefer \`key\` to force-reset a component state. If you only need to change partial of internal states not all of them (thus you can't use \`key\`), you should use \`foxact/use-component-will-receive-update\` as your last resort to change only some but not all of your internal states based on props change.`;
 const WATCH_ONLY_MESSAGE = 'This effect only reacts to a state change: it updates no state, returns no cleanup, and touches no ref, so nothing here requires effect timing. Every set call of this state lives in your own code — run this logic where the change originates (the event handler or callback that calls the set function) instead of watching the state in an effect. If it computes a value, derive it during the render phase (w/ `useMemo`) instead.';
 
 type FunctionKind =
