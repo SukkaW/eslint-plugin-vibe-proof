@@ -286,6 +286,25 @@ runTest({
         }
       `,
       errors: [{ messageId: 'watchStateOnly' }]
+    },
+    // setState in a immediate callback
+    {
+      code: dedent`
+        function Comp() {
+          const [currentScrollOffset, setCurrentScrollOffset] = useState(0);
+          useEffect(() => {
+            const handler = () => {
+              setCurrentScrollOffset(window.scrollY);
+            }
+
+            handler();
+
+            document.addEventListener('scroll', handler);
+            return () => document.removeEventListener('scroll', handler);
+          }, []);
+        }
+      `,
+      errors: [{ messageId: 'watchState' }]
     }
   ],
   valid: [
