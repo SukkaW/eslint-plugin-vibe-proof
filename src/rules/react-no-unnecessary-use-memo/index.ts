@@ -34,7 +34,9 @@ function hasCallOrNew(node: TSESTree.Node): boolean {
   ) {
     return true;
   }
-  for (const [key, value] of Object.entries(node)) {
+  const entries = Object.entries(node);
+  for (let i = 0, len = entries.length; i < len; i++) {
+    const [key, value] = entries[i];
     if (key === 'parent') continue;
     if (Array.isArray(value)) {
       if (
@@ -66,7 +68,8 @@ function checkForUsageInsideUseEffect(
   if (readRefs.length === 0) return null;
 
   const useEffectNodes = new Set<TSESTree.Node>();
-  for (const ref of readRefs) {
+  for (let i = 0, len = readRefs.length; i < len; i++) {
+    const ref = readRefs[i];
     const useEffectNode = findParentNode(ref.identifier, isUseEffectCall);
     if (useEffectNode == null) return null; // used outside useEffect
     useEffectNodes.add(useEffectNode);

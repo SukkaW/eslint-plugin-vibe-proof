@@ -19,7 +19,8 @@ export default createRule({
   create: (context) => ({
     JSXOpeningElement(node) {
       const seen = new Map<string, boolean>();
-      for (const attribute of node.attributes) {
+      for (let i = 0, len = node.attributes.length; i < len; i++) {
+        const attribute = node.attributes[i];
         if (attribute.type === AST_NODE_TYPES.JSXSpreadAttribute) continue;
         const propName = getPropName(attribute);
         if (seen.has(propName)) {

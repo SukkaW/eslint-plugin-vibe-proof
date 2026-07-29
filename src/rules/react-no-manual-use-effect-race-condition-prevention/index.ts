@@ -12,7 +12,8 @@ function getCleanupFunctions(callback: EffectCallback): EffectCallback[] {
   if (callback.body.type !== AST_NODE_TYPES.BlockStatement) return [];
 
   const cleanupFns: EffectCallback[] = [];
-  for (const statement of callback.body.body) {
+  for (let i = 0, len = callback.body.body.length; i < len; i++) {
+    const statement = callback.body.body[i];
     if (statement.type !== AST_NODE_TYPES.ReturnStatement || statement.argument == null) continue;
     if (statement.argument.type === AST_NODE_TYPES.FunctionExpression || statement.argument.type === AST_NODE_TYPES.ArrowFunctionExpression) {
       cleanupFns.push(statement.argument);
@@ -60,10 +61,12 @@ function hasManualCancellationPattern(
   const cleanupFns = getCleanupFunctions(callback);
   if (cleanupFns.length === 0) return false;
 
-  for (const statement of callback.body.body) {
+  for (let i = 0, len = callback.body.body.length; i < len; i++) {
+    const statement = callback.body.body[i];
     if (statement.type !== AST_NODE_TYPES.VariableDeclaration) continue;
 
-    for (const declarator of statement.declarations) {
+    for (let j = 0, declLen = statement.declarations.length; j < declLen; j++) {
+      const declarator = statement.declarations[j];
       if (declarator.id.type !== AST_NODE_TYPES.Identifier) continue;
 
       const variable = findVariable(context.sourceCode.getScope(declarator.id), declarator.id);

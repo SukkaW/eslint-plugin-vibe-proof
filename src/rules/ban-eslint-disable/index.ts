@@ -40,7 +40,8 @@ export default createRule({
       Program(program) {
         if (!program.comments || program.comments.length === 0) return;
 
-        for (const comment of program.comments) {
+        for (let i = 0, len = program.comments.length; i < len; i++) {
+          const comment = program.comments[i];
           const directive = getDirective(comment.value);
           if (directive && (options !== 'allow-with-description' || !comment.value.includes('--'))) {
             const messageId = options === 'allow-with-description' ? 'require-description' : 'do-not-use';

@@ -51,19 +51,13 @@ function isDeferredCallback(fn: TSESTree.Node): boolean {
   }
 
   // { onSuccess: cb } / { onSuccess(cb) } passed as an options object argument
-  if (
-    parent.type === AST_NODE_TYPES.Property
+  return parent.type === AST_NODE_TYPES.Property
     && parent.value === fn
     && !parent.computed
     && parent.key.type === AST_NODE_TYPES.Identifier
     && ASYNC_RESULT_CALLBACKS.has(parent.key.name)
     && parent.parent.type === AST_NODE_TYPES.ObjectExpression
-    && parent.parent.parent.type === AST_NODE_TYPES.CallExpression
-  ) {
-    return true;
-  }
-
-  return false;
+    && parent.parent.parent.type === AST_NODE_TYPES.CallExpression;
 }
 
 // Whether `node` executes in an async continuation relative to `effectCallback`:
@@ -192,7 +186,8 @@ function isStalenessGuarded(
 
     // Preceding `if (guard) return;` inside the same block
     if (parent.type === AST_NODE_TYPES.BlockStatement) {
-      for (const stmt of parent.body) {
+      for (let i = 0, len = parent.body.length; i < len; i++) {
+        const stmt = parent.body[i];
         if (stmt.range[1] > current.range[0]) break;
         if (isEarlyReturnGuard(stmt, guardNames, visitorKeys)) return true;
       }
@@ -212,7 +207,8 @@ function collectGuardNames(callback: EffectCallback, visitorKeys: VisitorKeys): 
 
   // Cancellation flags: booleans mutated inside the effect's cleanup function
   if (callback.body.type === AST_NODE_TYPES.BlockStatement) {
-    for (const stmt of callback.body.body) {
+    for (let i = 0, len = callback.body.body.length; i < len; i++) {
+      const stmt = callback.body.body[i];
       if (stmt.type !== AST_NODE_TYPES.ReturnStatement || stmt.argument == null) continue;
       const cleanup = stmt.argument;
       if (!ASTUtils.isFunction(cleanup)) continue;

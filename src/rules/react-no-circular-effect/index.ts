@@ -95,7 +95,8 @@ function isUnguardedSetterInCallback(
   cbStart: number,
   cbEnd: number
 ): boolean {
-  for (const ref of setterVar.references) {
+  for (let i = 0, len = setterVar.references.length; i < len; i++) {
+    const ref = setterVar.references[i];
     const [refStart, refEnd] = ref.identifier.range;
     if (refStart < cbStart || refEnd > cbEnd) {
       // skip refs outside the callback
@@ -157,7 +158,8 @@ export default createRule({
         const stateVars = new Set(setterToState.values());
         const edges: EffectEdge[] = [];
 
-        for (const node of pendingEffects) {
+        for (let i = 0, len = pendingEffects.length; i < len; i++) {
+          const node = pendingEffects[i];
           if (node.arguments.length < 2) continue;
 
           const callback = node.arguments[0];
@@ -165,7 +167,8 @@ export default createRule({
 
           const deps: Scope.Variable[] = [];
           if (depsArg.type === AST_NODE_TYPES.ArrayExpression) {
-            for (const el of depsArg.elements) {
+            for (let j = 0, elementsLen = depsArg.elements.length; j < elementsLen; j++) {
+              const el = depsArg.elements[j];
               if (el?.type === AST_NODE_TYPES.Identifier) {
                 const scope = context.sourceCode.getScope(el);
                 const v = findVariable(scope, el.name);
@@ -191,11 +194,13 @@ export default createRule({
         }
 
         const graph = new Map<Scope.Variable, Set<Scope.Variable>>();
-        for (const { deps, targets } of edges) {
-          for (const dep of deps) {
-            for (const target of targets) {
+        for (let i = 0, len = edges.length; i < len; i++) {
+          const { deps, targets } = edges[i];
+          for (let j = 0, depsLen = deps.length; j < depsLen; j++) {
+            const dep = deps[j];
+            for (let k = 0, targetsLen = targets.length; k < targetsLen; k++) {
               if (!graph.has(dep)) graph.set(dep, new Set());
-              graph.get(dep)!.add(target);
+              graph.get(dep)!.add(targets[k]);
             }
           }
         }
@@ -230,7 +235,8 @@ export default createRule({
         for (const v of graph.keys()) dfs(v);
         if (inCycle.size === 0) return;
 
-        for (const { deps, targets, node } of edges) {
+        for (let i = 0, len = edges.length; i < len; i++) {
+          const { deps, targets, node } = edges[i];
           const cycleDeps = deps.filter((d) => inCycle.has(d));
           const cycleTargets = targets.filter((t) => inCycle.has(t));
           if (cycleDeps.length === 0 || cycleTargets.length === 0) continue;

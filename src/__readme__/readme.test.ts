@@ -19,8 +19,11 @@ for (const m of readme.matchAll(RE_RULE_ENTRY)) {
 
 /** The severity each preset actually sets, for rules that are enabled. */
 const presetSeverity = new Map<string, Linter.RuleSeverity>();
-for (const cfg of Object.values(plugin.configs)) {
-  for (const [k, sev] of Object.entries(cfg.rules)) {
+const allConfigs = Object.values(plugin.configs);
+for (let i = 0, len = allConfigs.length; i < len; i++) {
+  const ruleEntries = Object.entries(allConfigs[i].rules);
+  for (let j = 0, entriesLen = ruleEntries.length; j < entriesLen; j++) {
+    const [k, sev] = ruleEntries[j];
     if (sev !== 'off') presetSeverity.set(k.replace(RE_PLUGIN_PREFIX, ''), sev as Linter.RuleSeverity);
   }
 }

@@ -150,13 +150,15 @@ function hasPropDependency(
 
   // Collect all parameter variables
   const paramVariables = new Set<string>();
-  for (const param of enclosingFunction.params) {
+  for (let i = 0, len = enclosingFunction.params.length; i < len; i++) {
+    const param = enclosingFunction.params[i];
     collectParamNames(param, paramVariables);
   }
   if (paramVariables.size === 0) return false;
 
   // Check if any dep references a param
-  for (const element of depsArg.elements) {
+  for (let i = 0, len = depsArg.elements.length; i < len; i++) {
+    const element = depsArg.elements[i];
     if (element == null || element.type === AST_NODE_TYPES.SpreadElement) continue;
     const rootName = getRootIdentifierName(element);
     if (rootName != null && paramVariables.has(rootName)) return true;
@@ -177,12 +179,14 @@ function collectParamNames(node: TSESTree.Node, names: Set<string>): void {
       collectParamNames(node.left, names);
       break;
     case AST_NODE_TYPES.ArrayPattern:
-      for (const el of node.elements) {
+      for (let i = 0, len = node.elements.length; i < len; i++) {
+        const el = node.elements[i];
         if (el != null) collectParamNames(el, names);
       }
       break;
     case AST_NODE_TYPES.ObjectPattern:
-      for (const prop of node.properties) {
+      for (let i = 0, len = node.properties.length; i < len; i++) {
+        const prop = node.properties[i];
         if (prop.type === AST_NODE_TYPES.Property) {
           collectParamNames(prop.value, names);
         } else {
@@ -227,7 +231,8 @@ function findOwnStateValueDep(
   const depsArg = effectNode.arguments[1];
   if (depsArg.type !== AST_NODE_TYPES.ArrayExpression) return null;
 
-  for (const element of depsArg.elements) {
+  for (let i = 0, len = depsArg.elements.length; i < len; i++) {
+    const element = depsArg.elements[i];
     if (element?.type !== AST_NODE_TYPES.Identifier) continue;
 
     const variable = ASTUtils.findVariable(context.sourceCode.getScope(element), element.name);
@@ -430,7 +435,8 @@ export default createRule({
           const calls = deferredSetStateCalls.get(fnNode);
           if (calls == null) continue;
 
-          for (const setStateCall of calls) {
+          for (let i = 0, len = calls.length; i < len; i++) {
+            const setStateCall = calls[i];
             const effectCall = findEnclosingEffectCall(setStateCall);
             if (effectCall == null) continue;
 

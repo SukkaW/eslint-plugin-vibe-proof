@@ -23,12 +23,14 @@ export default createRule({
   create: (context) => ({
     JSXOpeningElement(node) {
       const props = new Set<string>();
-      for (const attr of node.attributes) {
+      for (let i = 0, len = node.attributes.length; i < len; i++) {
+        const attr = node.attributes[i];
         if (attr.type === AST_NODE_TYPES.JSXSpreadAttribute) continue;
         if (attr.name.type === AST_NODE_TYPES.JSXNamespacedName) continue;
         props.add(attr.name.name);
       }
-      for (const [controlled, uncontrolled] of CONTROLLED_PAIRS) {
+      for (let i = 0, len = CONTROLLED_PAIRS.length; i < len; i++) {
+        const [controlled, uncontrolled] = CONTROLLED_PAIRS[i];
         if (!props.has(controlled) || !props.has(uncontrolled)) continue;
         const attrNode = node.attributes.find(
           (a) => a.type === AST_NODE_TYPES.JSXAttribute

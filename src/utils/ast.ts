@@ -22,11 +22,13 @@ export function walkNodes(
 
     const keys = visitorKeys[node.type] as readonly string[] | undefined;
     if (keys == null) continue;
-    for (const key of keys) {
+    for (let i = 0, len = keys.length; i < len; i++) {
+      const key = keys[i];
       // Array children may be holey (e.g. `ArrayExpression.elements` for `[a, , b]`)
       const child = node[key as keyof typeof node] as TSESTree.Node | Array<TSESTree.Node | null> | null | undefined;
       if (Array.isArray(child)) {
-        for (const c of child) {
+        for (let j = 0, childLen = child.length; j < childLen; j++) {
+          const c = child[j];
           if (c != null) stack.push(c);
         }
       } else if (child != null) {

@@ -158,7 +158,8 @@ function findLastWriteExprBefore(
   let lastWriteExpr: TSESTree.ConstDeclaration | TSESTree.LetOrVarDeclaredDeclaration | TSESTree.LetOrVarNonDeclaredDeclaration | TSESTree.Expression | null = null;
   if ('init' in def.node) lastWriteExpr = def.node.init;
 
-  for (const ref of variable.references) {
+  for (let i = 0, len = variable.references.length; i < len; i++) {
+    const ref = variable.references[i];
     if (ref.identifier.range[0] >= readPos) return lastWriteExpr;
     if (ref.isWrite() && ref.writeExpr && 'init' in def.node && ref.writeExpr !== def.node.init) {
       lastWriteExpr = ref.writeExpr as TSESTree.Expression;

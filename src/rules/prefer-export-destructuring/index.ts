@@ -62,7 +62,8 @@ export default createRule({
 
         const reads: Array<{ key: string, name: string }> = [];
 
-        for (const ref of readRefs) {
+        for (let i = 0, len = readRefs.length; i < len; i++) {
+          const ref = readRefs[i];
           const id = ref.identifier;
 
           // Every read must be a static-key member access: tmp[0], tmp.prop, tmp['prop']

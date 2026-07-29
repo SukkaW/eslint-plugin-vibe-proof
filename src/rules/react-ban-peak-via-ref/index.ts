@@ -123,7 +123,8 @@ export default createRule({
             current = expr.argument;
             continue;
           case AST_NODE_TYPES.TemplateLiteral: {
-            for (const sub of expr.expressions) {
+            for (let i = 0, len = expr.expressions.length; i < len; i++) {
+              const sub = expr.expressions[i];
               const kind = classifyExpression(sub, visited);
               if (kind != null) return kind;
             }
@@ -132,7 +133,8 @@ export default createRule({
 
           // Wrapping in a fresh literal is still mirroring the value
           case AST_NODE_TYPES.ArrayExpression: {
-            for (const element of expr.elements) {
+            for (let i = 0, len = expr.elements.length; i < len; i++) {
+              const element = expr.elements[i];
               if (element == null) continue;
               const kind = classifyExpression(
                 element.type === AST_NODE_TYPES.SpreadElement ? element.argument : element,
@@ -143,7 +145,8 @@ export default createRule({
             return null;
           }
           case AST_NODE_TYPES.ObjectExpression: {
-            for (const property of expr.properties) {
+            for (let i = 0, len = expr.properties.length; i < len; i++) {
+              const property = expr.properties[i];
               if (property.type === AST_NODE_TYPES.SpreadElement) {
                 const kind = classifyExpression(property.argument, visited);
                 if (kind != null) return kind;
@@ -229,7 +232,8 @@ export default createRule({
 
         // Preceding `if (ref.current ...) return;` in the same block
         if (parent.type === AST_NODE_TYPES.BlockStatement) {
-          for (const stmt of parent.body) {
+          for (let i = 0, len = parent.body.length; i < len; i++) {
+            const stmt = parent.body[i];
             if (stmt.range[1] > current.range[0]) break;
             if (isEarlyReturnGuard(stmt, refName)) return true;
           }

@@ -37,7 +37,8 @@ function checkForUsageInsideUseEffect(
   if (readRefs.length === 0) return null;
 
   const useEffectNodes = new Set<TSESTree.Node>();
-  for (const ref of readRefs) {
+  for (let i = 0, len = readRefs.length; i < len; i++) {
+    const ref = readRefs[i];
     const useEffectNode = findParentNode(ref.identifier, isUseEffectCall);
     if (useEffectNode == null) return null; // used outside useEffect
     useEffectNodes.add(useEffectNode);

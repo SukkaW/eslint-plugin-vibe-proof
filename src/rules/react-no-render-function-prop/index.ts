@@ -49,7 +49,8 @@ function resolveTypeMembers(
 
   if (typeNode.type === AST_NODE_TYPES.TSIntersectionType) {
     const allMembers: TSESTree.TSPropertySignature[] = [];
-    for (const member of typeNode.types) {
+    for (let i = 0, len = typeNode.types.length; i < len; i++) {
+      const member = typeNode.types[i];
       const resolved = resolveTypeMembers(member, typeMap);
       if (resolved != null) {
         appendArrayInPlace(allMembers, resolved);
@@ -116,7 +117,8 @@ function getRenderFunctionKind(typeNode: TSESTree.TypeNode): 'parameterized' | '
 
   if (typeNode.type === AST_NODE_TYPES.TSUnionType) {
     let kind: 'parameterized' | 'parameterless' | null = null;
-    for (const t of typeNode.types) {
+    for (let i = 0, len = typeNode.types.length; i < len; i++) {
+      const t = typeNode.types[i];
       const resolved = getRenderFunctionKind(t);
       if (resolved === 'parameterized') return 'parameterized';
       if (resolved != null) kind = resolved;
@@ -163,7 +165,8 @@ export default createRule({
       const members = getPropsTypeMembers(node, typeMap);
       if (members == null) return;
 
-      for (const member of members) {
+      for (let i = 0, len = members.length; i < len; i++) {
+        const member = members[i];
         if (member.typeAnnotation == null) continue;
 
         const kind = getRenderFunctionKind(member.typeAnnotation.typeAnnotation);
