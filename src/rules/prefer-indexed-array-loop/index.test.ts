@@ -12,8 +12,15 @@ runTest({
           console.log(x);
         }
       `,
+      output: dedent`
+        declare const arr: number[];
+        for (let i = 0, len = arr.length; i < len; i++) { const x = arr[i];
+          console.log(x);
+        }
+      `,
       errors: [{ messageId: 'noForOfArray' }]
     },
+    // call expressions are not simple targets — report without fix
     {
       code: dedent`
         for (const x of Object.entries({ a: 'b' })) {
@@ -22,6 +29,7 @@ runTest({
       `,
       errors: [{ messageId: 'noForOfArray' }]
     },
+    // array literal is not a simple target either — report without fix
     {
       code: 'for (const x of [1, 2, 3]) { console.log(x); }',
       errors: [{ messageId: 'noForOfArray' }]
@@ -30,6 +38,12 @@ runTest({
       code: dedent`
         declare const arr: readonly string[];
         for (const x of arr) {
+          console.log(x);
+        }
+      `,
+      output: dedent`
+        declare const arr: readonly string[];
+        for (let i = 0, len = arr.length; i < len; i++) { const x = arr[i];
           console.log(x);
         }
       `,
@@ -42,12 +56,24 @@ runTest({
           console.log(x);
         }
       `,
+      output: dedent`
+        declare const pair: [string, number];
+        for (let i = 0, len = pair.length; i < len; i++) { const x = pair[i];
+          console.log(x);
+        }
+      `,
       errors: [{ messageId: 'noForOfArray' }]
     },
     {
       code: dedent`
         declare const buf: Uint8Array;
         for (const byte of buf) {
+          console.log(byte);
+        }
+      `,
+      output: dedent`
+        declare const buf: Uint8Array;
+        for (let i = 0, len = buf.length; i < len; i++) { const byte = buf[i];
           console.log(byte);
         }
       `,
@@ -58,6 +84,12 @@ runTest({
       code: dedent`
         declare const u: number[] | string[];
         for (const x of u) {
+          console.log(x);
+        }
+      `,
+      output: dedent`
+        declare const u: number[] | string[];
+        for (let i = 0, len = u.length; i < len; i++) { const x = u[i];
           console.log(x);
         }
       `,
@@ -72,12 +104,47 @@ runTest({
           }
         }
       `,
+      output: dedent`
+        function process<T extends readonly number[]>(input: T) {
+          for (let i = 0, len = input.length; i < len; i++) { const x = input[i];
+            console.log(x);
+          }
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // single-statement body gets wrapped in a block
+    {
+      code: dedent`
+        declare const arr: string[];
+        for (const x of arr) console.log(x);
+      `,
+      output: dedent`
+        declare const arr: string[];
+        for (let i = 0, len = arr.length; i < len; i++) { const x = arr[i]; console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // `len` is taken by the loop variable — report without fix
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (const len of arr) {
+          console.log(len);
+        }
+      `,
       errors: [{ messageId: 'noForOfArray' }]
     },
     {
       code: dedent`
         declare const arr: number[];
         for (let i = 0; i < arr.length; i++) {
+          console.log(arr[i]);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        for (let i = 0, len = arr.length; i < len; i++) {
           console.log(arr[i]);
         }
       `,
@@ -91,7 +158,35 @@ runTest({
           console.log(arr[i]);
         }
       `,
+      output: dedent`
+        declare const arr: number[];
+        for (let i = 0, len = arr.length; i <= len - 1; i++) {
+          console.log(arr[i]);
+        }
+      `,
       errors: [{ messageId: 'uncachedLength' }]
+    },
+    // the body changes the array length — caching would change semantics,
+    // report without fix
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (let i = 0; i < arr.length; i++) {
+          arr.push(0);
+        }
+      `,
+      errors: [{ messageId: 'uncachedLength' }]
+    },
+    // two `.length` reads would both want the `len` name — report without fix
+    {
+      code: dedent`
+        declare const a: number[];
+        declare const b: number[];
+        for (let i = 0; i < a.length + b.length; i++) {
+          console.log(i);
+        }
+      `,
+      errors: [{ messageId: 'uncachedLength' }, { messageId: 'uncachedLength' }]
     }
   ],
   valid: [
