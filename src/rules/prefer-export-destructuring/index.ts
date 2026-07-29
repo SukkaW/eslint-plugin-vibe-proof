@@ -27,7 +27,7 @@ function renderPattern(reads: Array<{ key: string, name: string }>): string {
   const properties = reads.map(({ key, name }) => {
     if (key === name) return name;
     if (RE_VALID_IDENTIFIER.test(key) || RE_NON_NEGATIVE_INT.test(key)) return `${key}: ${name}`;
-    return `'${key}': ${name}`;
+    return `${JSON.stringify(key)}: ${name}`;
   });
   return `{ ${properties.join(', ')} }`;
 }
@@ -38,6 +38,7 @@ export default createRule({
   name: 'prefer-export-destructuring',
   meta: {
     type: 'suggestion',
+    fixable: 'code',
     docs: {
       description: 'Prefer exporting destructured bindings directly (`export const [a, b] = value` / `export const { a, b } = value`) over assigning to a temporary variable and exporting its elements one by one.'
     },
@@ -61,6 +62,8 @@ export default createRule({
         if (readRefs.length === 0) return;
 
         const reads: Array<{ key: string, name: string }> = [];
+        const readDeclarators = new Set<TSESTree.VariableDeclarator>();
+        const exportStatements = new Set<TSESTree.ExportNamedDeclaration>();
 
         for (let i = 0, len = readRefs.length; i < len; i++) {
           const ref = readRefs[i];
@@ -97,12 +100,72 @@ export default createRule({
           ) return;
 
           reads.push({ key, name: declarator.id.name });
+          readDeclarators.add(declarator);
+          exportStatements.add(declaration.parent);
         }
+
+        const declarationNode = node.parent;
+        const program = declarationNode.parent as TSESTree.Program;
+
+        // The fix moves the member reads up to the temp's position, so nothing
+        // may sit between the declaration and the exports — an intervening
+        // statement could mutate the object through another alias
+        const declarationIndex = program.body.indexOf(declarationNode);
+        const exportIndices = [...exportStatements]
+          .map((statement) => program.body.indexOf(statement))
+          .sort((a, b) => a - b);
+        const contiguous = exportIndices.every((exportIndex, i) => exportIndex === declarationIndex + 1 + i);
+        const lastExportEnd = Math.max(...[...exportStatements].map((statement) => statement.range[1]));
+        const hasCommentsInFixRange = context.sourceCode.getAllComments().some((comment) => (
+          comment.range[0] >= declarationNode.range[0]
+          && comment.range[1] <= lastExportEnd
+        ));
+
+        const canFix = contiguous
+          // the temp must be the statement's only declarator, and every removed
+          // export must contain only declarators absorbed into the pattern
+          && declarationNode.declarations.length === 1
+          // Reconstructing either side would discard type annotations or comments.
+          && node.id.typeAnnotation == null
+          && !hasCommentsInFixRange
+          && [...exportStatements].every((statement) => (
+            statement.declaration?.type === AST_NODE_TYPES.VariableDeclaration
+            && statement.declaration.declarations.every((d) => (
+              readDeclarators.has(d)
+              && d.id.type === AST_NODE_TYPES.Identifier
+              && d.id.typeAnnotation == null
+            ))
+          ));
 
         context.report({
           node,
           messageId: 'default',
-          data: { pattern: renderPattern(reads) }
+          data: { pattern: renderPattern(reads) },
+          fix: canFix
+            ? (fixer) => {
+              const { text } = context.sourceCode;
+              const equalsToken = context.sourceCode.getTokenAfter(node.id);
+              if (equalsToken?.value !== '=') return null;
+              const initializerText = text.slice(equalsToken.range[1], node.range[1]).trim();
+              const fixes = [
+                fixer.replaceText(
+                  declarationNode,
+                  `export const ${renderPattern(reads)} = ${initializerText};`
+                )
+              ];
+
+              for (const statement of exportStatements) {
+                // eat the preceding indentation and line break along with the statement
+                let start = statement.range[0];
+                while (start > 0 && (text[start - 1] === ' ' || text[start - 1] === '\t')) start--;
+                if (start > 0 && text[start - 1] === '\n') start--;
+                if (start > 0 && text[start - 1] === '\r') start--;
+                fixes.push(fixer.removeRange([start, statement.range[1]]));
+              }
+
+              return fixes;
+            }
+            : null
         });
       }
     };
