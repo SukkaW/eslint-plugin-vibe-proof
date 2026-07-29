@@ -60,6 +60,11 @@ export default [
       // Hoist literal regexes to module level to avoid re-creation on every call
       'vibe-proof/prefer-hoisted-regex': 'error',
 
+      /* --- included in `configs.common_type_checked` (requires typed linting) --- */
+
+      // Enforce indexed `for` loops with a cached length over `for...of` on arrays
+      'vibe-proof/prefer-indexed-array-loop': 'error',
+
       /* --- included in `configs.react` --- */
 
       // Disallow duplicate JSX props — only the last one takes effect

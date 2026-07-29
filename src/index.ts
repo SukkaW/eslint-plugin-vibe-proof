@@ -7,6 +7,9 @@ import no_constant_array_includes from './rules/no-constant-array-includes';
 import prefer_export_destructuring from './rules/prefer-export-destructuring';
 import prefer_hoisted_regex from './rules/prefer-hoisted-regex';
 
+// common (requires type information)
+import prefer_indexed_array_loop from './rules/prefer-indexed-array-loop';
+
 // jsx
 import jsx_no_duplicate_props from './rules/jsx-no-duplicate-props';
 import jsx_no_explicit_spread_props from './rules/jsx-no-explicit-spread-props';
@@ -50,11 +53,7 @@ const plugin = {
         'vibe-proof/prefer-hoisted-regex': 'error'
       } as Linter.RulesRecord
     },
-    /**
-     * Reserved for rules that need typescript-eslint type information. Empty
-     * until such a rule exists — spreading it is a no-op, so consumers can wire
-     * it up now and pick up typed rules as they land.
-     */
+    /** Rules that need typescript-eslint type information. */
     common_type_checked: {
       name: 'eslint-plugin-vibe-proof/common_type_checked',
       plugins: {
@@ -62,7 +61,9 @@ const plugin = {
           return plugin;
         }
       },
-      rules: {} as Linter.RulesRecord
+      rules: {
+        'vibe-proof/prefer-indexed-array-loop': 'error'
+      } as Linter.RulesRecord
     },
     react: {
       name: 'eslint-plugin-vibe-proof/react',
@@ -114,6 +115,9 @@ const plugin = {
     'no-constant-array-includes': no_constant_array_includes,
     'prefer-export-destructuring': prefer_export_destructuring,
     'prefer-hoisted-regex': prefer_hoisted_regex,
+
+    // common (requires type information)
+    'prefer-indexed-array-loop': prefer_indexed_array_loop,
 
     // jsx
     'jsx-no-duplicate-props': jsx_no_duplicate_props,
