@@ -4,6 +4,7 @@ import type { Linter } from 'eslint';
 import ban_eslint_disable from './rules/ban-eslint-disable';
 import no_chain_array_higher_order_functions from './rules/no-chain-array-higher-order-functions';
 import no_constant_array_includes from './rules/no-constant-array-includes';
+import prefer_array_reduce_to_object from './rules/prefer-array-reduce-to-object';
 import prefer_export_destructuring from './rules/prefer-export-destructuring';
 import prefer_hoisted_regex from './rules/prefer-hoisted-regex';
 
@@ -50,6 +51,7 @@ const plugin = {
         'vibe-proof/ban-eslint-disable': 'error',
         'vibe-proof/no-chain-array-higher-order-functions': 'error',
         'vibe-proof/no-constant-array-includes': 'error',
+        'vibe-proof/prefer-array-reduce-to-object': 'error',
         'vibe-proof/prefer-export-destructuring': 'error',
         'vibe-proof/prefer-hoisted-regex': 'error'
       } as Linter.RulesRecord
@@ -115,6 +117,7 @@ const plugin = {
     'ban-eslint-disable': ban_eslint_disable,
     'no-chain-array-higher-order-functions': no_chain_array_higher_order_functions,
     'no-constant-array-includes': no_constant_array_includes,
+    'prefer-array-reduce-to-object': prefer_array_reduce_to_object,
     'prefer-export-destructuring': prefer_export_destructuring,
     'prefer-hoisted-regex': prefer_hoisted_regex,
 

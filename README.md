@@ -55,6 +55,9 @@ export default [
       'vibe-proof/no-chain-array-higher-order-functions': 'error',
       // Disallow `.includes()` on constant arrays — use a `Set` with `.has()`
       'vibe-proof/no-constant-array-includes': 'error',
+      // Avoid passing entry arrays from `.flatMap()` / `.map()` / `.reduce()`
+      // / `.reduceRight()` to `Object.fromEntries`
+      'vibe-proof/prefer-array-reduce-to-object': 'error',
       // Prefer `export const { a, b } = value` over exporting elements one by one
       'vibe-proof/prefer-export-destructuring': 'error',
       // Hoist literal regexes to module level to avoid re-creation on every call
