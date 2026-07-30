@@ -34,6 +34,7 @@ interface Cleanup {
 
 interface FixableRemoval {
   additions: EventListenerCall[],
+  cleanup: Cleanup,
   statement: TSESTree.ExpressionStatement | null
 }
 
@@ -149,27 +150,30 @@ function parseEventListenerCall(
   };
 }
 
-function getCleanup(callback: EffectCallback): Cleanup | null {
-  if (callback.body.type !== AST_NODE_TYPES.BlockStatement) return null;
+function collectCleanups(
+  sourceCode: TSESLint.SourceCode,
+  callback: EffectCallback
+): Cleanup[] {
+  if (callback.body.type !== AST_NODE_TYPES.BlockStatement) return [];
 
-  let cleanup: Cleanup | null = null;
-  for (let i = 0, len = callback.body.body.length; i < len; i++) {
-    const statement = callback.body.body[i];
+  const cleanups: Cleanup[] = [];
+  walkNodes(callback.body, sourceCode.visitorKeys, (node) => {
+    // Returns inside helpers belong to those functions, not to the effect.
+    if (node !== callback.body && ASTUtils.isFunction(node)) return false;
     if (
-      statement.type !== AST_NODE_TYPES.ReturnStatement
-      || statement.argument == null
-      || (statement.argument.type !== AST_NODE_TYPES.ArrowFunctionExpression
-        && statement.argument.type !== AST_NODE_TYPES.FunctionExpression)
+      node.type === AST_NODE_TYPES.ReturnStatement
+      && node.argument != null
+      && (node.argument.type === AST_NODE_TYPES.ArrowFunctionExpression
+        || node.argument.type === AST_NODE_TYPES.FunctionExpression)
     ) {
-      continue;
+      cleanups.push({
+        callback: node.argument,
+        returnStatement: node
+      });
+      return false;
     }
-    if (cleanup != null) return null;
-    cleanup = {
-      callback: statement.argument,
-      returnStatement: statement
-    };
-  }
-  return cleanup;
+  });
+  return cleanups;
 }
 
 function collectAdditions(
@@ -345,6 +349,15 @@ function getCleanupRemovalRange(
     : range;
 }
 
+function isFinalTopLevelCleanupReturn(
+  callback: EffectCallback,
+  cleanup: Cleanup
+): boolean {
+  return callback.body.type === AST_NODE_TYPES.BlockStatement
+    && cleanup.returnStatement.parent === callback.body
+    && callback.body.body.at(-1) === cleanup.returnStatement;
+}
+
 function removeImportSpecifier(
   fixer: TSESLint.RuleFixer,
   sourceCode: TSESLint.SourceCode,
@@ -475,8 +488,8 @@ export default createRule({
         const callback = getEffectCallback(node);
         if (callback == null) return;
 
-        const cleanup = getCleanup(callback);
-        if (cleanup == null) return;
+        const cleanups = collectCleanups(sourceCode, callback);
+        if (cleanups.length === 0) return;
 
         const additions = collectAdditions(sourceCode, callback).filter((addition) => (
           typeAware == null
@@ -489,17 +502,21 @@ export default createRule({
         if (additions.length === 0) return;
 
         const matchedRemovals: FixableRemoval[] = [];
-        const removals = collectRemovals(cleanup);
-        for (let i = 0, len = removals.length; i < len; i++) {
-          const { removal, statement } = removals[i];
-          const matchingAdditions = additions.filter(
-            (addition) => callsMatch(sourceCode, addition, removal)
-          );
-          if (matchingAdditions.length > 0) {
-            matchedRemovals.push({
-              additions: matchingAdditions,
-              statement
-            });
+        for (let i = 0, cleanupLen = cleanups.length; i < cleanupLen; i++) {
+          const cleanup = cleanups[i];
+          const removals = collectRemovals(cleanup);
+          for (let j = 0, removalLen = removals.length; j < removalLen; j++) {
+            const { removal, statement } = removals[j];
+            const matchingAdditions = additions.filter(
+              (addition) => callsMatch(sourceCode, addition, removal)
+            );
+            if (matchingAdditions.length > 0) {
+              matchedRemovals.push({
+                additions: matchingAdditions,
+                cleanup,
+                statement
+              });
+            }
           }
         }
         if (matchedRemovals.length === 0) return;
@@ -537,17 +554,35 @@ export default createRule({
                 }
               }
 
-              const cleanupBody = cleanup.callback.body;
-              if (
-                cleanupBody.type !== AST_NODE_TYPES.BlockStatement
-                || cleanupBody.body.every((statement) => (
-                  fixableRemovals.some((removal) => removal.statement === statement)
-                ))
-              ) {
-                fixes.push(fixer.removeRange(getCleanupRemovalRange(sourceCode, cleanup.returnStatement)));
-              } else {
-                for (let i = 0, len = fixableRemovals.length; i < len; i++) {
-                  const statement = fixableRemovals[i].statement;
+              const removalsByCleanup = new Map<Cleanup, FixableRemoval[]>();
+              for (let i = 0, len = fixableRemovals.length; i < len; i++) {
+                const removal = fixableRemovals[i];
+                const cleanupRemovals = removalsByCleanup.get(removal.cleanup);
+                if (cleanupRemovals == null) {
+                  removalsByCleanup.set(removal.cleanup, [removal]);
+                } else {
+                  cleanupRemovals.push(removal);
+                }
+              }
+
+              for (const [cleanup, cleanupRemovals] of removalsByCleanup) {
+                const cleanupBody = cleanup.callback.body;
+                const becomesEmpty = cleanupBody.type !== AST_NODE_TYPES.BlockStatement
+                  || cleanupBody.body.every((statement) => (
+                    cleanupRemovals.some((removal) => removal.statement === statement)
+                  ));
+
+                if (becomesEmpty) {
+                  if (isFinalTopLevelCleanupReturn(callback, cleanup)) {
+                    fixes.push(fixer.removeRange(getCleanupRemovalRange(sourceCode, cleanup.returnStatement)));
+                  } else {
+                    fixes.push(fixer.replaceText(cleanup.returnStatement, 'return;'));
+                  }
+                  continue;
+                }
+
+                for (let i = 0, len = cleanupRemovals.length; i < len; i++) {
+                  const statement = cleanupRemovals[i].statement;
                   if (statement != null) {
                     fixes.push(fixer.removeRange(getRemovalRange(sourceCode, statement)));
                   }

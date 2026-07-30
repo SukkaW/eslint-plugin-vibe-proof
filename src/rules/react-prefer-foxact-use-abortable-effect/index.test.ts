@@ -178,6 +178,103 @@ runTest({
       errors: [{ messageId: 'eventTarget' }]
     },
     {
+      // Removing a conditional cleanup must preserve the branch's early exit;
+      // otherwise otherSideEffect would begin running when isEnabled is true.
+      code: dedent`
+        import { useEffect } from 'react';
+
+        function Component({ isEnabled }) {
+          useEffect(() => {
+            if (isEnabled) {
+              window.addEventListener('scroll', handleScroll);
+              return () => window.removeEventListener('scroll', handleScroll);
+            }
+            otherSideEffect();
+          }, [isEnabled]);
+        }
+      `,
+      output: dedent`
+        import { useEffect } from 'foxact/use-abortable-effect';
+
+        function Component({ isEnabled }) {
+          useEffect((signal) => {
+            if (isEnabled) {
+              window.addEventListener('scroll', handleScroll, { signal });
+              return;
+            }
+            otherSideEffect();
+          }, [isEnabled]);
+        }
+      `,
+      errors: [{ messageId: 'eventTarget' }]
+    },
+    {
+      // A direct cleanup return can still have unreachable statements after
+      // it. Preserve the return so the fixer does not make them executable.
+      code: dedent`
+        import { useEffect } from 'react';
+
+        function Component() {
+          useEffect(() => {
+            window.addEventListener('scroll', handleScroll);
+            return () => window.removeEventListener('scroll', handleScroll);
+            otherSideEffect();
+          }, []);
+        }
+      `,
+      output: dedent`
+        import { useEffect } from 'foxact/use-abortable-effect';
+
+        function Component() {
+          useEffect((signal) => {
+            window.addEventListener('scroll', handleScroll, { signal });
+            return;
+            otherSideEffect();
+          }, []);
+        }
+      `,
+      errors: [{ messageId: 'eventTarget' }]
+    },
+    {
+      // Each conditional cleanup is fixed independently and keeps its own
+      // early return.
+      code: dedent`
+        import { useEffect } from 'react';
+
+        function Component({ mode }) {
+          useEffect(() => {
+            if (mode === 'scroll') {
+              window.addEventListener('scroll', handleScroll);
+              return () => window.removeEventListener('scroll', handleScroll);
+            }
+            if (mode === 'keyboard') {
+              window.addEventListener('keydown', handleKeyDown);
+              return () => window.removeEventListener('keydown', handleKeyDown);
+            }
+            otherSideEffect();
+          }, [mode]);
+        }
+      `,
+      output: dedent`
+        import { useEffect } from 'foxact/use-abortable-effect';
+
+        function Component({ mode }) {
+          useEffect((signal) => {
+            if (mode === 'scroll') {
+              window.addEventListener('scroll', handleScroll, { signal });
+              return;
+            }
+            if (mode === 'keyboard') {
+              window.addEventListener('keydown', handleKeyDown, { signal });
+              return;
+            }
+            otherSideEffect();
+          }, [mode]);
+        }
+      `,
+      errors: [{ messageId: 'eventTarget' }]
+    },
+    {
       // Remove a trailing named specifier without disturbing the preceding one.
       code: dedent`
         import { useState, useEffect } from 'react';
