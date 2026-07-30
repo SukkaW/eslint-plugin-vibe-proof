@@ -33,6 +33,7 @@ import react_prefer_state_updater_function from './rules/react-prefer-state-upda
 // react + foxact
 import react_prefer_foxact_compose_context_provider from './rules/react-prefer-foxact-compose-context-provider';
 import react_prefer_foxact_persistent from './rules/react-prefer-foxact-persistent';
+import react_prefer_foxact_use_abortable_effect from './rules/react-prefer-foxact-use-abortable-effect';
 import react_prefer_foxact_use_clipboard from './rules/react-prefer-foxact-use-clipboard';
 import react_prefer_foxact_use_media_query from './rules/react-prefer-foxact-use-media-query';
 
@@ -93,6 +94,7 @@ const plugin = {
 
         'vibe-proof/react-prefer-foxact-compose-context-provider': 'error',
         'vibe-proof/react-prefer-foxact-persistent': 'error',
+        'vibe-proof/react-prefer-foxact-use-abortable-effect': 'warn',
         'vibe-proof/react-prefer-foxact-use-clipboard': 'error',
         'vibe-proof/react-prefer-foxact-use-media-query': 'error'
       } as Linter.RulesRecord
@@ -142,6 +144,7 @@ const plugin = {
     // react + foxact
     'react-prefer-foxact-compose-context-provider': react_prefer_foxact_compose_context_provider,
     'react-prefer-foxact-persistent': react_prefer_foxact_persistent,
+    'react-prefer-foxact-use-abortable-effect': react_prefer_foxact_use_abortable_effect,
     'react-prefer-foxact-use-clipboard': react_prefer_foxact_use_clipboard,
     'react-prefer-foxact-use-media-query': react_prefer_foxact_use_media_query
   }

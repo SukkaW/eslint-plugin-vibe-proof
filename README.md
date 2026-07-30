@@ -105,6 +105,8 @@ export default [
       'vibe-proof/react-prefer-foxact-compose-context-provider': 'error',
       // Disallow `localStorage` / `sessionStorage` in React code
       'vibe-proof/react-prefer-foxact-persistent': 'error',
+      // Prefer an abortable effect for EventTarget subscriptions with manual cleanup
+      'vibe-proof/react-prefer-foxact-use-abortable-effect': 'error',
       // Disallow copy-related Web APIs in React code
       'vibe-proof/react-prefer-foxact-use-clipboard': 'error',
       // Disallow direct `matchMedia` usage in React code

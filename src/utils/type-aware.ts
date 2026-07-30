@@ -77,6 +77,15 @@ export function isDefinitelyIndexableArrayType(checker: ts.TypeChecker, type: ts
   return matchesType(checker, type, (t) => isIndexableArrayType(checker, t), false);
 }
 
+/** Positive proof that every possible constituent is assignable to `target`. */
+export function isDefinitelyAssignableToType(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  target: ts.Type
+): boolean {
+  return matchesType(checker, type, (t) => checker.isTypeAssignableTo(t, target), false);
+}
+
 // Built-in collections (besides Array) whose callback-taking iteration methods
 // (forEach / map / etc.) invoke the callback synchronously.
 const SYNC_ITERABLE_TYPE_NAMES = new Set<string>([
