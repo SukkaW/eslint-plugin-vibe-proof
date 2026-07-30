@@ -16,7 +16,69 @@ runTest({
     // Non-array const variable
     'const s = "abc"; s.includes("a")',
     // Const variable initialized from function
-    'const arr = getItems(); arr.includes(x)'
+    'const arr = getItems(); arr.includes(x)',
+    // Converting the array to a Set would remove Array.prototype.some.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS.includes(x);
+      ITEMS.some((item) => item === x);
+    `,
+    // Any other array method makes whole-variable Set conversion unsafe.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS.includes(x);
+      ITEMS.map((item) => item.toUpperCase());
+    `,
+    // Index access requires the value to remain an array.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS.includes(x);
+      console.log(ITEMS[0]);
+    `,
+    // Passing the array elsewhere means its required interface is unknown.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS.includes(x);
+      consume(ITEMS);
+    `,
+    // Mutations and reassignment are incompatible with replacing the binding.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS.push('c');
+      ITEMS.includes(x);
+    `,
+    dedent`
+      let items = ['a', 'b'];
+      items.includes(x);
+      items = ['c'];
+    `,
+    // Exported bindings are public API; consumers may rely on Array methods.
+    dedent`
+      export const ITEMS = ['a', 'b'];
+      ITEMS.includes(x);
+    `,
+    dedent`
+      const ITEMS = ['a', 'b'];
+      export { ITEMS };
+      ITEMS.includes(x);
+    `,
+    // A parameter can be initialized by the caller instead of its default.
+    dedent`
+      function isAllowed(items = ['a', 'b'], value) {
+        return items.includes(value);
+      }
+    `,
+    // Element writes mutate the array without writing the binding itself.
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS[0] = 'c';
+      ITEMS.includes(x);
+    `,
+    dedent`
+      const ITEMS = ['a', 'b'];
+      ITEMS[0] += 'c';
+      ITEMS.includes(x);
+    `
   ],
   invalid: [
     // Basic inline array includes
@@ -94,6 +156,26 @@ runTest({
     // let variable with static array value
     {
       code: 'let arr = [1, 2]; arr.includes(x)',
+      errors: [{ messageId: 'default' }]
+    },
+    // Multiple includes calls are all compatible with one Set conversion.
+    {
+      code: dedent`
+        const ITEMS = ['a', 'b'];
+        ITEMS.includes(x);
+        ITEMS.includes(y);
+      `,
+      errors: [
+        { messageId: 'default' },
+        { messageId: 'default' }
+      ]
+    },
+    // Transparent TypeScript wrappers around the binding remain supported.
+    {
+      code: dedent`
+        const ITEMS = ['a', 'b'];
+        (ITEMS as readonly string[]).includes(x);
+      `,
       errors: [{ messageId: 'default' }]
     }
   ]
