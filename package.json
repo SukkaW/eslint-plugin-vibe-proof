@@ -44,7 +44,7 @@
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@swc-node/register": "^1.12.1",
-    "@swc/core": "^1.15.46",
+    "@swc/core": "^1.15.47",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.9.5",
     "@typescript-eslint/rule-tester": "^8.65.0",
@@ -63,5 +63,5 @@
     "eslint": ">=9.29.0",
     "typescript": "*"
   },
-  "packageManager": "pnpm@11.17.0"
+  "packageManager": "pnpm@11.18.0"
 }
