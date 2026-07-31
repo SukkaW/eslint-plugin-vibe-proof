@@ -20,6 +20,44 @@ runTest({
       `,
       errors: [{ messageId: 'noForOfArray' }]
     },
+    {
+      code: dedent`
+        declare const specs: string[];
+        for (const [index, rawSpec] of specs.entries()) {
+          console.log(index, rawSpec);
+        }
+      `,
+      output: dedent`
+        declare const specs: string[];
+        for (let i = 0, len = specs.length; i < len; i++) { const index = i, rawSpec = specs[i];
+          console.log(index, rawSpec);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Array `.entries()` is reported even when the binding cannot be safely
+    // rewritten without retaining the entry tuple allocation
+    {
+      code: dedent`
+        declare const specs: readonly string[];
+        for (const entry of specs.entries()) {
+          console.log(entry);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Mutating the array length changes the iterator's behavior, so this is
+    // reported without an autofix that would cache a stale length
+    {
+      code: dedent`
+        declare const specs: string[];
+        for (const [index, rawSpec] of specs.entries()) {
+          specs.push(rawSpec);
+          console.log(index);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
     // call expressions are not simple targets — report without fix
     {
       code: dedent`
@@ -204,6 +242,19 @@ runTest({
       declare const iterable: Iterable<number>;
       for (const x of iterable) {
         console.log(x);
+      }
+    `,
+    // `.entries()` on non-array collections is not indexable
+    dedent`
+      declare const map: ReadonlyMap<string, number>;
+      for (const [key, value] of map.entries()) {
+        console.log(key, value);
+      }
+    `,
+    dedent`
+      declare const custom: { entries(): IterableIterator<[number, string]> };
+      for (const [index, value] of custom.entries()) {
+        console.log(index, value);
       }
     `,
     dedent`

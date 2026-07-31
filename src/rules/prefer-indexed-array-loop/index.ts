@@ -6,6 +6,65 @@ import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils } from '@typescript-eslint/utils';
 import type { TSESLint } from '@typescript-eslint/utils';
 
+interface ArrayEntriesCall {
+  array: TSESTree.Expression,
+  call: TSESTree.CallExpression,
+  optional: boolean
+}
+
+function getArrayEntriesCall(node: TSESTree.Expression): ArrayEntriesCall | null {
+  if (
+    node.type !== AST_NODE_TYPES.CallExpression
+    || node.callee.type !== AST_NODE_TYPES.MemberExpression
+    || node.callee.computed
+    || node.callee.property.type !== AST_NODE_TYPES.Identifier
+    || node.callee.property.name !== 'entries'
+  ) {
+    return null;
+  }
+
+  return {
+    array: node.callee.object,
+    call: node,
+    optional: node.optional || node.callee.optional
+  };
+}
+
+interface EntriesBinding {
+  kind: 'const' | 'let' | 'var',
+  index: TSESTree.Identifier,
+  value: TSESTree.Identifier
+}
+
+// The common `for (const [index, value] of array.entries())` shape can be
+// rewritten without allocating an entry tuple on every iteration. More complex
+// binding patterns are still reported, but deliberately left for the author.
+function getEntriesBinding(node: TSESTree.ForOfStatement): EntriesBinding | null {
+  if (
+    node.left.type !== AST_NODE_TYPES.VariableDeclaration
+    || (node.left.kind !== 'const' && node.left.kind !== 'let' && node.left.kind !== 'var')
+    || node.left.declarations.length !== 1
+  ) {
+    return null;
+  }
+
+  const pattern = node.left.declarations[0].id;
+  if (
+    pattern.type !== AST_NODE_TYPES.ArrayPattern
+    || pattern.elements.length !== 2
+    || pattern.elements[0]?.type !== AST_NODE_TYPES.Identifier
+    || pattern.elements[1]?.type !== AST_NODE_TYPES.Identifier
+  ) {
+    return null;
+  }
+
+  return {
+    kind: node.left.kind,
+    index: pattern.elements[0],
+    value: pattern.elements[1]
+  };
+}
+
 function hasIdentifierNamed(
   sourceCode: TSESLint.SourceCode,
   root: TSESTree.Node,
@@ -74,7 +133,7 @@ export default createRule({
     type: 'suggestion',
     fixable: 'code',
     docs: {
-      description: 'Enforce indexed `for` loops with a cached length over `for...of` when iterating arrays.',
+      description: 'Enforce indexed `for` loops with a cached length over `for...of` and array `.entries()` iteration.',
       recommended: 'recommended',
       requiresTypeChecking: true
     },
@@ -95,15 +154,33 @@ export default createRule({
         // `for await...of` awaits each element — not an indexed iteration
         if (node.await) return;
 
-        if (!isDefinitelyIndexableArrayType(checker, services.getTypeAtLocation(node.right))) {
+        const rightIsArray = isDefinitelyIndexableArrayType(
+          checker,
+          services.getTypeAtLocation(node.right)
+        );
+        const entriesCall = rightIsArray ? null : getArrayEntriesCall(node.right);
+        const array = entriesCall?.array ?? node.right;
+        if (
+          !rightIsArray
+          && !isDefinitelyIndexableArrayType(checker, services.getTypeAtLocation(array))
+        ) {
           return;
         }
 
-        const arrayText = sourceCode.getText(node.right);
-        const canFix = isSimpleTarget(node.right)
+        const arrayText = sourceCode.getText(array);
+        const entriesBinding = entriesCall == null ? null : getEntriesBinding(node);
+        const canFix = isSimpleTarget(array)
           && isNameFree(sourceCode, node, 'i')
           && isNameFree(sourceCode, node, 'len')
-          && !mayMutateArray(sourceCode, node.body, arrayText);
+          && !mayMutateArray(sourceCode, node.body, arrayText)
+          && (
+            entriesCall == null
+            || (
+              entriesBinding != null
+              && entriesCall.call.arguments.length === 0
+              && !entriesCall.optional
+            )
+          );
 
         context.report({
           node,
@@ -111,7 +188,9 @@ export default createRule({
           fix: canFix
             ? (fixer) => {
               const header = `for (let i = 0, len = ${arrayText}.length; i < len; i++) `;
-              const decl = `${sourceCode.getText(node.left)} = ${arrayText}[i];`;
+              const decl = entriesBinding == null
+                ? `${sourceCode.getText(node.left)} = ${arrayText}[i];`
+                : `${entriesBinding.kind} ${sourceCode.getText(entriesBinding.index)} = i, ${sourceCode.getText(entriesBinding.value)} = ${arrayText}[i];`;
 
               const replacement = node.body.type === AST_NODE_TYPES.BlockStatement
                 ? `${header}{ ${decl}${sourceCode.getText(node.body).slice(1)}`
