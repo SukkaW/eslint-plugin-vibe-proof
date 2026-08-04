@@ -38,7 +38,7 @@ function matchesType(
   match: (t: ts.Type) => boolean,
   indeterminate: boolean
 ): boolean {
-  let t = checker.getNonNullableType(type);
+  let t: ts.Type = checker.getNonNullableType(type);
 
   // unwrap type parameters to their base constraint
   while (t.isTypeParameter()) {

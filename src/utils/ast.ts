@@ -153,3 +153,60 @@ export function isGlobalMemberAccess(
     && expression.object.name === objectName
     && expression.property.name === propertyName;
 }
+
+/**
+ * Checks whether an expression's value is only observed as truthy or falsy.
+ */
+export function isInBooleanContext(node: TSESTree.Node): boolean {
+  let current = node;
+  while (true) {
+    const parent = current.parent;
+
+    if (parent == null) {
+      return false;
+    }
+
+    if (
+      (parent.type === AST_NODE_TYPES.IfStatement && parent.test === current)
+      || (parent.type === AST_NODE_TYPES.WhileStatement && parent.test === current)
+      || (parent.type === AST_NODE_TYPES.ForStatement && parent.test === current)
+      || (parent.type === AST_NODE_TYPES.DoWhileStatement && parent.test === current)
+      || (parent.type === AST_NODE_TYPES.ConditionalExpression && parent.test === current)
+    ) {
+      return true;
+    }
+
+    if (
+      (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === '!')
+      || (parent.type === AST_NODE_TYPES.LogicalExpression
+        && (parent.operator === '&&' || parent.operator === '||'))
+    ) {
+      current = parent;
+      continue;
+    }
+
+    return false;
+  }
+}
+
+/**
+ * Returns the kind of a syntactically nullish expression, or `false` when the
+ * expression is neither `undefined`, `null`, nor `void 0`.
+ */
+export function isNullish(node: TSESTree.Expression): 'undefined' | 'null' | false {
+  if (node.type === AST_NODE_TYPES.Identifier && node.name === 'undefined') {
+    return 'undefined';
+  }
+  if (node.type === AST_NODE_TYPES.Literal && node.value === null) {
+    return 'null';
+  }
+  if (
+    node.type === AST_NODE_TYPES.UnaryExpression
+    && node.operator === 'void'
+    && node.argument.type === AST_NODE_TYPES.Literal
+    && node.argument.value === 0
+  ) {
+    return 'undefined';
+  }
+  return false;
+}

@@ -4,28 +4,29 @@ import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils, TSESLint } from '@typescript-eslint/utils';
 
-function getOutermostTransparentExpression(node: TSESTree.Identifier): TSESTree.Node {
+function getOutermostTransparentExpression(node: TSESTree.Identifier | TSESTree.JSXIdentifier): TSESTree.Node {
   let current: TSESTree.Node = node;
   for (;;) {
-    const { parent } = current;
     if (
-      (parent.type === AST_NODE_TYPES.ChainExpression
-        || parent.type === AST_NODE_TYPES.TSAsExpression
-        || parent.type === AST_NODE_TYPES.TSNonNullExpression
-        || parent.type === AST_NODE_TYPES.TSTypeAssertion
-        || parent.type === AST_NODE_TYPES.TSSatisfiesExpression)
-      && parent.expression === current
+      (
+        current.parent.type === AST_NODE_TYPES.ChainExpression
+        || current.parent.type === AST_NODE_TYPES.TSAsExpression
+        || current.parent.type === AST_NODE_TYPES.TSNonNullExpression
+        || current.parent.type === AST_NODE_TYPES.TSTypeAssertion
+        || current.parent.type === AST_NODE_TYPES.TSSatisfiesExpression
+      ) && current.parent.expression === current
     ) {
-      current = parent;
+      current = current.parent;
       continue;
     }
     return current;
   }
 }
 
-function isCalledIncludesReceiver(node: TSESTree.Identifier): boolean {
+function isCalledIncludesReceiver(node: TSESTree.Identifier | TSESTree.JSXIdentifier): boolean {
   const expression = getOutermostTransparentExpression(node);
-  const { parent } = expression;
+  const parent = expression.parent;
+  if (parent == null) return false;
   return parent.type === AST_NODE_TYPES.MemberExpression
     && parent.object === expression
     && !parent.computed
@@ -38,6 +39,8 @@ function isCalledIncludesReceiver(node: TSESTree.Identifier): boolean {
 function isDirectlyExported(variable: TSESLint.Scope.Variable): boolean {
   return variable.defs.some((definition) => {
     const declaration = definition.node.parent;
+    if (declaration.parent == null) return false;
+
     return declaration.parent.type === AST_NODE_TYPES.ExportNamedDeclaration
       || declaration.parent.type === AST_NODE_TYPES.ExportDefaultDeclaration;
   });

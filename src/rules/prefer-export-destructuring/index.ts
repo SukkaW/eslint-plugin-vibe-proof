@@ -111,11 +111,10 @@ export default createRule({
         // may sit between the declaration and the exports — an intervening
         // statement could mutate the object through another alias
         const declarationIndex = program.body.indexOf(declarationNode);
-        const exportIndices = [...exportStatements]
-          .map((statement) => program.body.indexOf(statement))
+        const exportIndices = Array.from(exportStatements, (statement) => program.body.indexOf(statement))
           .sort((a, b) => a - b);
         const contiguous = exportIndices.every((exportIndex, i) => exportIndex === declarationIndex + 1 + i);
-        const lastExportEnd = Math.max(...[...exportStatements].map((statement) => statement.range[1]));
+        const lastExportEnd = Math.max(...Array.from(exportStatements, (statement) => statement.range[1]));
         const hasCommentsInFixRange = context.sourceCode.getAllComments().some((comment) => (
           comment.range[0] >= declarationNode.range[0]
           && comment.range[1] <= lastExportEnd

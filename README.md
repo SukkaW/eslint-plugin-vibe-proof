@@ -55,16 +55,39 @@ export default [
       'vibe-proof/no-chain-array-higher-order-functions': 'error',
       // Disallow `.includes()` on constant arrays — use a `Set` with `.has()`
       'vibe-proof/no-constant-array-includes': 'error',
+      // Prefer `array.at(-1)` over `array[array.length - 1]` for the last item
+      'vibe-proof/prefer-array-at-for-last-item': 'error',
+      // Prefer `Array.from(iterable, mapper)` over materializing an iterable
+      // and then calling `.map()`
+      'vibe-proof/prefer-array-from-mapper': 'error',
       // Avoid passing entry arrays from `.flatMap()` / `.map()` / `.reduce()`
       // / `.reduceRight()` to `Object.fromEntries`
       'vibe-proof/prefer-array-reduce-to-object': 'error',
+      // Prefer `.some()` over `.find()` / `.filter().length` when checking
+      // whether an element exists
+      'vibe-proof/prefer-array-some': 'error',
       // Prefer `export const { a, b } = value` over exporting elements one by one
       'vibe-proof/prefer-export-destructuring': 'error',
       // Hoist literal regexes to module level to avoid re-creation on every call
       'vibe-proof/prefer-hoisted-regex': 'error',
+      // Hoist an `Intl.Collator` instance instead of calling `localeCompare`
+      // inside a sort callback
+      'vibe-proof/prefer-static-collator': 'error',
+      // Prefer the fastest Unicode-safe code-unit / code-point operation for
+      // statically known values
+      'vibe-proof/prefer-string-code-point-operations': 'error',
+      // Prefer `{ throwIfNoEntry: false }` over relying on a thrown error for
+      // missing fs entries in sync stat calls
+      'vibe-proof/prefer-throw-if-no-entry': 'error',
+      // Pass the callback and its arguments directly to `setTimeout` /
+      // `setInterval` instead of wrapping them in an arrow function or `bind`
+      'vibe-proof/prefer-timer-args': 'error',
 
       /* --- included in `configs.common_type_checked` (requires typed linting) --- */
 
+      // Prefer optimized alternatives (`.startsWith()`, direct index access)
+      // over `indexOf()` equality checks
+      'vibe-proof/no-indexof-equality': 'error',
       // Enforce indexed `for` loops with a cached length over `for...of` on arrays
       'vibe-proof/prefer-indexed-array-loop': 'error',
 

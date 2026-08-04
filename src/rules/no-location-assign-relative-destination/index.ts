@@ -192,7 +192,7 @@ function getStaticStringPrefix(node: TSESTree.Expression, sourceCode: TSESLint.S
       const variable = ASTUtils.findVariable(sourceCode.getScope(current), current);
       if (!variable || variable.defs.length < 1) return null;
 
-      const def = variable.defs[variable.defs.length - 1];
+      const def = variable.defs.at(-1);
       if (def.type !== TSESLint.Scope.DefinitionType.Variable) return null;
 
       const readPos = current.range[0];

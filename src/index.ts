@@ -7,9 +7,17 @@ import no_constant_array_includes from './rules/no-constant-array-includes';
 import prefer_array_reduce_to_object from './rules/prefer-array-reduce-to-object';
 import prefer_export_destructuring from './rules/prefer-export-destructuring';
 import prefer_hoisted_regex from './rules/prefer-hoisted-regex';
+import prefer_array_at_for_last_item from './rules/prefer-array-at-for-last-item';
+import prefer_array_from_mapper from './rules/prefer-array-from-mapper';
+import prefer_string_code_point_operations from './rules/prefer-string-code-point-operations';
+import prefer_array_some from './rules/prefer-array-some';
+import prefer_timer_args from './rules/prefer-timer-args';
+import prefer_static_collator from './rules/prefer-static-collator';
+import prefer_throw_if_no_entry from './rules/prefer-throw-if-no-entry';
 
 // common (requires type information)
 import prefer_indexed_array_loop from './rules/prefer-indexed-array-loop';
+import no_indexof_equality from './rules/no-indexof-equality';
 
 // jsx
 import jsx_no_duplicate_props from './rules/jsx-no-duplicate-props';
@@ -53,7 +61,14 @@ const plugin = {
         'vibe-proof/no-constant-array-includes': 'error',
         'vibe-proof/prefer-array-reduce-to-object': 'error',
         'vibe-proof/prefer-export-destructuring': 'error',
-        'vibe-proof/prefer-hoisted-regex': 'error'
+        'vibe-proof/prefer-hoisted-regex': 'error',
+        'vibe-proof/prefer-array-at-for-last-item': 'error',
+        'vibe-proof/prefer-array-from-mapper': 'error',
+        'vibe-proof/prefer-string-code-point-operations': 'error',
+        'vibe-proof/prefer-array-some': 'error',
+        'vibe-proof/prefer-timer-args': 'error',
+        'vibe-proof/prefer-static-collator': 'error',
+        'vibe-proof/prefer-throw-if-no-entry': 'error'
       } as Linter.RulesRecord
     },
     /** Rules that need typescript-eslint type information. */
@@ -65,7 +80,8 @@ const plugin = {
         }
       },
       rules: {
-        'vibe-proof/prefer-indexed-array-loop': 'error'
+        'vibe-proof/prefer-indexed-array-loop': 'error',
+        'vibe-proof/no-indexof-equality': 'error'
       } as Linter.RulesRecord
     },
     react: {
@@ -120,9 +136,17 @@ const plugin = {
     'prefer-array-reduce-to-object': prefer_array_reduce_to_object,
     'prefer-export-destructuring': prefer_export_destructuring,
     'prefer-hoisted-regex': prefer_hoisted_regex,
+    'prefer-array-at-for-last-item': prefer_array_at_for_last_item,
+    'prefer-array-from-mapper': prefer_array_from_mapper,
+    'prefer-string-code-point-operations': prefer_string_code_point_operations,
+    'prefer-array-some': prefer_array_some,
+    'prefer-timer-args': prefer_timer_args,
+    'prefer-static-collator': prefer_static_collator,
+    'prefer-throw-if-no-entry': prefer_throw_if_no_entry,
 
     // common (requires type information)
     'prefer-indexed-array-loop': prefer_indexed_array_loop,
+    'no-indexof-equality': no_indexof_equality,
 
     // jsx
     'jsx-no-duplicate-props': jsx_no_duplicate_props,
