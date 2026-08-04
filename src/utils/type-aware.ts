@@ -47,9 +47,11 @@ function matchesType(
     t = checker.getNonNullableType(constraint);
   }
 
-  if (getBit(t.flags, INDETERMINATE_TYPE_FLAGS)) return indeterminate;
-  if (t.isUnion()) return t.types.every((part) => matchesType(checker, part, match, indeterminate));
-  if (t.isIntersection()) return t.types.some((part) => matchesType(checker, part, match, indeterminate));
+  const $t: ts.Type = t;
+
+  if (getBit($t.flags, INDETERMINATE_TYPE_FLAGS)) return indeterminate;
+  if ($t.isUnion()) return $t.types.every((part) => matchesType(checker, part, match, indeterminate));
+  if ($t.isIntersection()) return $t.types.some((part) => matchesType(checker, part, match, indeterminate));
 
   return match(t);
 }

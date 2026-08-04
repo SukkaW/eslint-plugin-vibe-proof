@@ -193,7 +193,7 @@ function getStaticStringPrefix(node: TSESTree.Expression, sourceCode: TSESLint.S
       if (!variable || variable.defs.length < 1) return null;
 
       const def = variable.defs.at(-1);
-      if (def.type !== TSESLint.Scope.DefinitionType.Variable) return null;
+      if (def?.type !== TSESLint.Scope.DefinitionType.Variable) return null;
 
       const readPos = current.range[0];
       const lastWriteExpr = findLastWriteExprBefore(variable, def, readPos);
