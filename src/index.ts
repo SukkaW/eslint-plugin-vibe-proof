@@ -1,4 +1,4 @@
-import type { Linter } from 'eslint';
+import type { ESLint, Rule } from 'eslint';
 
 // common
 import ban_eslint_disable from './rules/ban-eslint-disable';
@@ -46,7 +46,7 @@ import react_prefer_foxact_use_abortable_effect from './rules/react-prefer-foxac
 import react_prefer_foxact_use_clipboard from './rules/react-prefer-foxact-use-clipboard';
 import react_prefer_foxact_use_media_query from './rules/react-prefer-foxact-use-media-query';
 
-const plugin = {
+const plugin: ESLint.Plugin = {
   configs: {
     common: {
       name: 'eslint-plugin-vibe-proof/common',
@@ -69,7 +69,7 @@ const plugin = {
         'vibe-proof/prefer-timer-args': 'error',
         'vibe-proof/prefer-static-collator': 'error',
         'vibe-proof/prefer-throw-if-no-entry': 'error'
-      } as Linter.RulesRecord
+      }
     },
     /** Rules that need typescript-eslint type information. */
     common_type_checked: {
@@ -82,7 +82,7 @@ const plugin = {
       rules: {
         'vibe-proof/prefer-indexed-array-loop': 'error',
         'vibe-proof/no-indexof-equality': 'error'
-      } as Linter.RulesRecord
+      }
     },
     react: {
       name: 'eslint-plugin-vibe-proof/react',
@@ -115,7 +115,7 @@ const plugin = {
         'vibe-proof/react-prefer-foxact-use-abortable-effect': 'warn',
         'vibe-proof/react-prefer-foxact-use-clipboard': 'error',
         'vibe-proof/react-prefer-foxact-use-media-query': 'error'
-      } as Linter.RulesRecord
+      }
     },
     /** React counterpart of {@link common_type_checked}. Empty for now. */
     react_type_checked: {
@@ -125,9 +125,10 @@ const plugin = {
           return plugin;
         }
       },
-      rules: {} as Linter.RulesRecord
+      rules: {}
     }
   },
+  // eslint-disable-next-line sukka/type/no-force-cast-via-top-type -- fuck eslint types and typescript-eslint
   rules: {
     // common
     'ban-eslint-disable': ban_eslint_disable,
@@ -174,8 +175,8 @@ const plugin = {
     'react-prefer-foxact-use-abortable-effect': react_prefer_foxact_use_abortable_effect,
     'react-prefer-foxact-use-clipboard': react_prefer_foxact_use_clipboard,
     'react-prefer-foxact-use-media-query': react_prefer_foxact_use_media_query
-  }
-} as const;
+  } as unknown as Record<string, Rule.RuleModule>
+};
 
 export default plugin;
 export { plugin as eslint_plugin_vibe_proof };
