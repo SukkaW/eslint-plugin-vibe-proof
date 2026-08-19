@@ -122,6 +122,8 @@ export default [
       'vibe-proof/react-no-use-effect-watching': 'error',
       // Disallow `useState` without its setter — use `useRef` or `foxact/use-singleton`
       'vibe-proof/react-no-use-state-as-ref': 'error',
+      // Disallow local, prop-less components rendering constant JSX — use a constant JSX variable
+      'vibe-proof/react-no-useless-components': 'error',
       // Prefer `React.PropsWithChildren` over manually declaring `{ children: ReactNode }`
       'vibe-proof/react-prefer-props-with-children': 'error',
       // Prefer the state updater function form when updating state

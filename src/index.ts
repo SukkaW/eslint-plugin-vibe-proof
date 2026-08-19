@@ -36,6 +36,7 @@ import react_no_unnecessary_use_callback from './rules/react-no-unnecessary-use-
 import react_no_unnecessary_use_memo from './rules/react-no-unnecessary-use-memo';
 import react_no_use_effect_watching from './rules/react-no-use-effect-watching';
 import react_no_use_state_as_ref from './rules/react-no-use-state-as-ref';
+import react_no_useless_components from './rules/react-no-useless-components';
 import react_prefer_props_with_children from './rules/react-prefer-props-with-children';
 import react_prefer_state_updater_function from './rules/react-prefer-state-updater-function';
 
@@ -107,6 +108,7 @@ const plugin: ESLint.Plugin = {
         'vibe-proof/react-no-unnecessary-use-memo': 'error',
         'vibe-proof/react-no-use-effect-watching': 'error',
         'vibe-proof/react-no-use-state-as-ref': 'error',
+        'vibe-proof/react-no-useless-components': 'error',
         'vibe-proof/react-prefer-props-with-children': 'error',
         'vibe-proof/react-prefer-state-updater-function': 'error',
 
@@ -166,6 +168,7 @@ const plugin: ESLint.Plugin = {
     'react-no-unnecessary-use-memo': react_no_unnecessary_use_memo,
     'react-no-use-effect-watching': react_no_use_effect_watching,
     'react-no-use-state-as-ref': react_no_use_state_as_ref,
+    'react-no-useless-components': react_no_useless_components,
     'react-prefer-props-with-children': react_prefer_props_with_children,
     'react-prefer-state-updater-function': react_prefer_state_updater_function,
 
