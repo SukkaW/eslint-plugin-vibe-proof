@@ -125,6 +125,41 @@ interface Candidate {
 const RE_HOC_NAME = /^with[A-Z]/;
 
 /**
+ * Whether the HOC call's result leaves the module — `export default
+ * memo(Comp)`, `export const M = memo(Comp)`, or `const M = memo(Comp)`
+ * with `M` exported later. Then the component is effectively exported and
+ * the wrapper is part of the module's API, not dead weight.
+ */
+function isHocResultExported(sourceCode: TSESLint.SourceCode, call: TSESTree.CallExpression): boolean {
+  let node: TSESTree.Node = call;
+  // walk through nested wrappers: `export default withRouter(memo(Comp))`
+  // (the AST types claim `parent` is always set, but that is not reliable
+  // at runtime, hence the defensive `?.` despite the lint warnings)
+  while (node.parent?.type === AST_NODE_TYPES.CallExpression) node = node.parent;
+
+  const parent = node.parent;
+  if (parent == null) return false;
+  if (
+    parent.type === AST_NODE_TYPES.ExportDefaultDeclaration
+    || parent.type === AST_NODE_TYPES.ExportNamedDeclaration
+  ) {
+    return true;
+  }
+
+  if (parent.type === AST_NODE_TYPES.VariableDeclarator && parent.id.type === AST_NODE_TYPES.Identifier) {
+    if (parent.parent.parent?.type === AST_NODE_TYPES.ExportNamedDeclaration) return true;
+
+    const variable = ASTUtils.findVariable(sourceCode.getScope(parent.id), parent.id.name);
+    return variable?.references.some(
+      (ref) => ref.identifier.parent?.type === AST_NODE_TYPES.ExportSpecifier
+        || ref.identifier.parent?.type === AST_NODE_TYPES.ExportDefaultDeclaration
+    ) ?? false;
+  }
+
+  return false;
+}
+
+/**
  * The name of the HOC a call wraps a component with, or `null` when the call
  * is not recognizably a HOC. Covers `memo` / `forwardRef` (incl. `React.*`)
  * and the `withXxx` naming convention (`withRouter`, `withTheme`, ...).
@@ -336,6 +371,8 @@ export default createRule({
 
             // Passed to a HOC (`memo(Foo)`, `withRouter(Foo)`) — for a
             // prop-less component every HOC is a no-op, reported separately.
+            // Unless the wrapped result is exported: then the component
+            // effectively leaves the module and must stay one.
             if (
               parent.type === AST_NODE_TYPES.CallExpression
               && id.type === AST_NODE_TYPES.Identifier
@@ -343,6 +380,10 @@ export default createRule({
             ) {
               const hoc = getUselessHocName(parent);
               if (hoc != null) {
+                if (isHocResultExported(context.sourceCode, parent)) {
+                  mustStayComponent = true;
+                  break;
+                }
                 hocName = hoc;
                 continue;
               }

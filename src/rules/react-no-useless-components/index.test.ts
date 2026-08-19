@@ -99,6 +99,50 @@ runTest({
         return <Suspense fallback={Fallback}><Page /></Suspense>;
       }
     `,
+    // HOC-wrapped result is default-exported — the component leaves the
+    // module, the wrapper is API
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      export default memo(Comp);
+    `,
+    // Bare default export via a later reference
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      export default Comp;
+    `,
+    // Bare named export via a specifier
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      export { Comp };
+    `,
+    // HOC result assigned to an exported const
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      export const MemoComp = memo(Comp);
+    `,
+    // HOC result exported via a later specifier
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      const MemoComp = memo(Comp);
+      export { MemoComp };
+    `,
+    // Nested HOC wrappers, result default-exported
+    dedent`
+      function Comp() {
+        return <div />;
+      }
+      export default withRouter(memo(Comp));
+    `,
     // Passed to an unrecognized call — the API may genuinely require a
     // component type, so it must remain a component
     dedent`
