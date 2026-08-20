@@ -4,6 +4,7 @@ import type { ESLint, Rule } from 'eslint';
 import ban_eslint_disable from './rules/ban-eslint-disable';
 import no_chain_array_higher_order_functions from './rules/no-chain-array-higher-order-functions';
 import no_constant_array_includes from './rules/no-constant-array-includes';
+import no_eager_await_in_condition from './rules/no-eager-await-in-condition';
 import prefer_array_reduce_to_object from './rules/prefer-array-reduce-to-object';
 import prefer_export_destructuring from './rules/prefer-export-destructuring';
 import prefer_hoisted_regex from './rules/prefer-hoisted-regex';
@@ -60,6 +61,7 @@ const plugin: ESLint.Plugin = {
         'vibe-proof/ban-eslint-disable': 'error',
         'vibe-proof/no-chain-array-higher-order-functions': 'error',
         'vibe-proof/no-constant-array-includes': 'error',
+        'vibe-proof/no-eager-await-in-condition': 'error',
         'vibe-proof/prefer-array-reduce-to-object': 'error',
         'vibe-proof/prefer-export-destructuring': 'error',
         'vibe-proof/prefer-hoisted-regex': 'error',
@@ -136,6 +138,7 @@ const plugin: ESLint.Plugin = {
     'ban-eslint-disable': ban_eslint_disable,
     'no-chain-array-higher-order-functions': no_chain_array_higher_order_functions,
     'no-constant-array-includes': no_constant_array_includes,
+    'no-eager-await-in-condition': no_eager_await_in_condition,
     'prefer-array-reduce-to-object': prefer_array_reduce_to_object,
     'prefer-export-destructuring': prefer_export_destructuring,
     'prefer-hoisted-regex': prefer_hoisted_regex,

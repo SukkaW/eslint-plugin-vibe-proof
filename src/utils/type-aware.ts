@@ -24,6 +24,9 @@ export function getTypeAware(sourceCode: TSESLint.SourceCode): TypeAware | null 
 
 const INDETERMINATE_TYPE_FLAGS = setBit(ts.TypeFlags.Any, ts.TypeFlags.Unknown);
 
+/** Symbol flags that mean a property access invokes an accessor. */
+const ACCESSOR_SYMBOL_FLAGS = setBit(ts.SymbolFlags.GetAccessor, ts.SymbolFlags.SetAccessor);
+
 /**
  * Tests `match` against a type, unwrapping nullability, unions, intersections
  * and type parameter constraints. `indeterminate` is the verdict for types the
@@ -103,4 +106,59 @@ export function couldBeSyncIterationReceiver(checker: ts.TypeChecker, type: ts.T
     const symbol = t.getSymbol();
     return symbol != null && SYNC_ITERABLE_TYPE_NAMES.has(symbol.getName());
   }, true);
+}
+
+/**
+ * Whether a property access provably reads a plain data property — never an
+ * accessor, and never anything that could run user code.
+ *
+ * `hasSideEffect({ considerGetters: true })` has to assume every `obj.x` might
+ * be a getter, because syntax alone cannot tell. With the checker we can look
+ * the symbol up and find out, which lets a rule treat a genuine field read as
+ * the cheap operation it is.
+ *
+ * Positive proof only: an unresolved symbol, a union with an accessor member,
+ * an index signature, or anything the checker cannot pin down all answer
+ * `false`, so callers keep their conservative syntactic behaviour.
+ */
+export function isDefinitelyDataPropertyAccess(
+  typeAware: TypeAware,
+  object: TSESTree.Node,
+  propertyName: string
+): boolean {
+  const { checker } = typeAware;
+  const objectType = checker.getNonNullableType(typeAware.getTypeAtLocation(object));
+
+  // Every constituent of a union has to be a plain field: if any branch could
+  // be an accessor, the read might invoke one.
+  const constituents = objectType.isUnion() ? objectType.types : [objectType];
+
+  for (let i = 0, len = constituents.length; i < len; i++) {
+    const constituent = checker.getNonNullableType(constituents[i]);
+    if (getBit(constituent.flags, INDETERMINATE_TYPE_FLAGS)) return false;
+
+    const symbol = constituent.getProperty(propertyName);
+    // No declared symbol means an index signature, a `Proxy`, or a property the
+    // checker cannot see — all of which may run code on access.
+    if (symbol == null) return false;
+    if (getBit(symbol.flags, ACCESSOR_SYMBOL_FLAGS)) return false;
+
+    const declarations = symbol.getDeclarations();
+    if (declarations == null || declarations.length === 0) return false;
+
+    for (let j = 0, declarationsLen = declarations.length; j < declarationsLen; j++) {
+      if (!ts.isPropertyDeclaration(declarations[j])
+        && !ts.isPropertySignature(declarations[j])
+        && !ts.isParameterPropertyDeclaration(declarations[j], declarations[j].parent)
+        && !ts.isPropertyAssignment(declarations[j])
+        && !ts.isShorthandPropertyAssignment(declarations[j])
+        && !ts.isBindingElement(declarations[j])
+        && !ts.isEnumMember(declarations[j])
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return constituents.length > 0;
 }

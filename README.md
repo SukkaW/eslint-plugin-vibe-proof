@@ -55,6 +55,9 @@ export default [
       'vibe-proof/no-chain-array-higher-order-functions': 'error',
       // Disallow `.includes()` on constant arrays — use a `Set` with `.has()`
       'vibe-proof/no-constant-array-includes': 'error',
+      // Test cheap synchronous operands before an `await` that they can
+      // short-circuit, so the async work only happens when it is needed.
+      'vibe-proof/no-eager-await-in-condition': 'error',
       // Prefer `array.at(-1)` over `array[array.length - 1]` for the last item
       'vibe-proof/prefer-array-at-for-last-item': 'error',
       // Prefer `Array.from(iterable, mapper)` over materializing an iterable
