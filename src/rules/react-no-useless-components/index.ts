@@ -207,8 +207,8 @@ function getConstantJsxText(node: FunctionNode, sourceCode: TSESLint.SourceCode)
  * - a usage carries attributes or children — they are ignored by the
  *   component but their expressions still evaluate at element creation, so
  *   deleting them could remove side effects;
- * - the lowercased constant name is already bound at the declaration or a
- *   usage site;
+ * - the generated constant name (lowercased, `Jsx`-suffixed) is already
+ *   bound at the declaration or a usage site;
  * - a usage sits lexically before the declaration at module level — a
  *   `function` declaration hoists but `const` does not, so only a usage
  *   inside a function body (evaluated on call, after module init) stays safe.
@@ -222,7 +222,10 @@ function tryBuildFix(
   const jsxText = getConstantJsxText(fnNode, sourceCode);
   if (jsxText == null) return null;
 
-  const newName = defId.name.charAt(0).toLowerCase() + defId.name.slice(1);
+  // `Jsx`-suffixed so the constant visually reads as a ReactNode — e.g.
+  // `{isLoading && cardSkeletonJsx}` instead of an ambiguous `cardSkeleton`
+  const lowered = defId.name.charAt(0).toLowerCase() + defId.name.slice(1);
+  const newName = lowered.endsWith('Jsx') ? lowered : `${lowered}Jsx`;
   if (ASTUtils.findVariable(sourceCode.getScope(defId), newName) != null) return null;
 
   const declTarget = defId.parent.type === AST_NODE_TYPES.VariableDeclarator
@@ -275,7 +278,7 @@ export default createRule({
       description: 'Disallow local, prop-less React components that render constant JSX. Assign the JSX to a constant variable instead.'
     },
     messages: {
-      uselessComponent: 'Component "{{name}}" is not exported, takes no props, and renders constant JSX. It does not need to be a component — assign its JSX to a constant variable (`const xxx = jsx`) and reference that constant in place of `<{{name}} />`. A React element is immutable, so the same constant can be rendered any number of times.',
+      uselessComponent: 'Component "{{name}}" is not exported, takes no props, and renders constant JSX. It does not need to be a component — assign its JSX to a constant variable (`const xxxJsx = jsx`) and reference that constant in place of `<{{name}} />`. A React element is immutable, so the same constant can be rendered any number of times.',
       uselessHocWrapper: 'Component "{{name}}" takes no props, so wrapping it in the HOC "{{hoc}}" does nothing: a HOC can only feed a component through props, which "{{name}}" never reads — and `memo` in particular only compares props, so it has nothing to memoize while constant JSX gets the same bailout for free: React skips reconciliation via reference identity. Drop the wrapper and assign the JSX to a constant variable instead.'
     },
     schema: []

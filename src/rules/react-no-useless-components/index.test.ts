@@ -229,9 +229,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -245,9 +245,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -263,9 +263,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -280,9 +280,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -298,9 +298,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -316,9 +316,9 @@ runTest({
         }
       `,
       output: dedent`
-        const meta = <><title>hi</title><meta charSet="utf-8" /></>;
+        const metaJsx = <><title>hi</title><meta charSet="utf-8" /></>;
         export function App() {
-          return <main>{meta}</main>;
+          return <main>{metaJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Meta' } }]
@@ -333,8 +333,8 @@ runTest({
       `,
       output: dedent`
         export function App() {
-          const header = <div>hi</div>;
-          return <main>{header}</main>;
+          const headerJsx = <div>hi</div>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -350,9 +350,9 @@ runTest({
         }
       `,
       output: dedent`
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -382,9 +382,9 @@ runTest({
         }
       `,
       output: dedent`
-        const banner = globalFlag ? <div>a</div> : <div>b</div>;
+        const bannerJsx = globalFlag ? <div>a</div> : <div>b</div>;
         export function App() {
-          return <main>{banner}</main>;
+          return <main>{bannerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Banner' } }]
@@ -398,9 +398,9 @@ runTest({
         }
       `,
       output: dedent`
-        const banner = globalFlag && <div>a</div>;
+        const bannerJsx = globalFlag && <div>a</div>;
         export function App() {
-          return <main>{banner}</main>;
+          return <main>{bannerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Banner' } }]
@@ -465,9 +465,9 @@ runTest({
       `,
       output: dedent`
         const TITLE = 'hi';
-        const header = <div className="header">{TITLE}</div>;
+        const headerJsx = <div className="header">{TITLE}</div>;
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
@@ -489,19 +489,19 @@ runTest({
       `,
       output: [
         dedent`
-          const header = <header>hi</header>;
+          const headerJsx = <header>hi</header>;
           function Footer() {
             return <footer>bye</footer>;
           }
           export function App() {
-            return <main>{header}<Footer /></main>;
+            return <main>{headerJsx}<Footer /></main>;
           }
         `,
         dedent`
-          const header = <header>hi</header>;
-          const footer = <footer>bye</footer>;
+          const headerJsx = <header>hi</header>;
+          const footerJsx = <footer>bye</footer>;
           export function App() {
-            return <main>{header}{footer}</main>;
+            return <main>{headerJsx}{footerJsx}</main>;
           }
         `
       ],
@@ -522,9 +522,9 @@ runTest({
         }
       `,
       output: dedent`
-        const divider = <hr />;
+        const dividerJsx = <hr />;
         export function App() {
-          return <main>{divider}{divider}</main>;
+          return <main>{dividerJsx}{dividerJsx}</main>;
         }
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Divider' } }]
@@ -542,9 +542,9 @@ runTest({
       `,
       output: dedent`
         export function App() {
-          return <main>{header}</main>;
+          return <main>{headerJsx}</main>;
         }
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
     },
@@ -560,9 +560,9 @@ runTest({
       `,
       output: dedent`
         export function Layout() {
-          return header;
+          return headerJsx;
         }
-        const header = <div>hi</div>;
+        const headerJsx = <div>hi</div>;
       `,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
     },
@@ -579,10 +579,10 @@ runTest({
       output: null,
       errors: [{ messageId: 'uselessComponent', data: { name: 'Header' } }]
     },
-    // Lowercased name is already taken — reported without autofix
+    // The generated `xxxJsx` name is already taken — reported without autofix
     {
       code: dedent`
-        const header = 'existing';
+        const headerJsx = 'existing';
         function Header() {
           return <div>hi</div>;
         }
