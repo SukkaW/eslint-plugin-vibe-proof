@@ -26,7 +26,7 @@
     "build": "bunchee --no-sourcemap --minify",
     "test": "SWC_NODE_PROJECT=./tsconfig.test.json SWC_NODE_INLINE_SOURCE_MAP=1 nyc mocha -r=@swc-node/register './src/**/*.test.ts' --timeout 5000 --full-trace",
     "prepare": "pnpm run build",
-    "prerelease": "pnpm run lint && pnpm run test && pnpm run build",
+    "prerelease": "pnpm run build && pnpm run lint && pnpm run test",
     "release": "bumpp -r --all --commit \"release: %s\" --tag \"%s\""
   },
   "keywords": [
