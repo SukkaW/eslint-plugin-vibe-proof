@@ -4,12 +4,32 @@ import { couldBeArrayType, getTypeAware } from '@/utils/type-aware';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 
+// Every method here can be folded into a single reducer pass over the source.
+//
+// Deliberately absent:
+// - `.sort()`/`.toSorted()`: the ordering has to be established before
+//   insertion, so the intermediate array is unavoidable.
+// - `.concat()`: two sources cannot be merged within one reducer pass.
+// - `.slice()`/`.splice()`/`.toSpliced()`/`.with()`/`.fill()`/`.copyWithin()`:
+//   positional selection needs a materialized array to index into.
+// - `.find()`/`.at()`/`.join()`/`.some()` and friends: these do not return an
+//   array at all, so `Object.fromEntries()` on them is a different mistake.
 const ARRAY_TO_ENTRIES_METHODS = new Set([
+  'filter',
   'flatMap',
+  'keys',
   'map',
   'reduce',
-  'reduceRight'
+  'reduceRight',
+  'toReversed',
+  'values'
 ]);
+
+const METHOD_MESSAGE_IDS: Record<string, 'preferFilterReduce' | 'preferFlatReduce' | 'preferReverseReduce' | undefined> = {
+  filter: 'preferFilterReduce',
+  flatMap: 'preferFlatReduce',
+  toReversed: 'preferReverseReduce'
+};
 
 interface ArrayToEntriesCall {
   method: string,
@@ -50,8 +70,10 @@ export default createRule({
     },
     schema: [],
     messages: {
-      preferReduce: 'Avoid `Object.fromEntries(array.{{method}}(...))`, which builds an intermediate entries array. Use `.reduce()` to build the object directly instead.',
-      preferFlatReduce: 'Avoid `Object.fromEntries(array.flatMap(...))`, which builds an intermediate flattened array plus callback result arrays. If the source itself needs flattening, use `.flat().reduce()` to build the object; otherwise, reduce directly.'
+      preferReduce: 'Avoid `Object.fromEntries(array.{{method}}(...))`, which builds an intermediate entries array. Build the object directly in a `.reduce()` instead, or in a `.reduceRight()` if a later entry must not overwrite an earlier one.',
+      preferFlatReduce: 'Avoid `Object.fromEntries(array.flatMap(...))`, which builds an intermediate flattened array plus callback result arrays. If the source itself needs flattening, use `.flat().reduce()` to build the object; otherwise, reduce directly.',
+      preferFilterReduce: 'Avoid `Object.fromEntries(array.filter(...))`, which builds an intermediate filtered array. Use `.reduce()` and skip the unwanted entries inside the reducer instead.',
+      preferReverseReduce: 'Avoid `Object.fromEntries(array.toReversed())`, which builds an intermediate reversed array. Use `.reduceRight()` to build the object directly, which visits the entries in the same order.'
     }
   },
   create(context) {
@@ -89,9 +111,7 @@ export default createRule({
 
         context.report({
           node,
-          messageId: arrayToEntriesCall.method === 'flatMap'
-            ? 'preferFlatReduce'
-            : 'preferReduce',
+          messageId: METHOD_MESSAGE_IDS[arrayToEntriesCall.method] ?? 'preferReduce',
           data: {
             method: arrayToEntriesCall.method
           }

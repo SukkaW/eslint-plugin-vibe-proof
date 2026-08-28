@@ -15,11 +15,14 @@ runTest({
     'Object.fromEntries([["key", "value"]]);',
     'Object.fromEntries(new Map([["key", "value"]]));',
     'Object.fromEntries(Object.entries(value));',
-    'Object.fromEntries(items.filter(isEntry));',
     'Object.fromEntries(getEntries());',
-    // Do not look through operations whose ordering or selection may matter.
+    // Sorting must happen before insertion, and positional selection needs a
+    // materialized array, so neither intermediate array is avoidable.
     'Object.fromEntries(items.map(toEntry).toSorted(compareEntries));',
+    'Object.fromEntries(items.map(toEntry).sort(compareEntries));',
     'Object.fromEntries(items.map(toEntry).slice(0, 10));',
+    'Object.fromEntries(entriesA.concat(entriesB));',
+    'Object.fromEntries(items.map(toEntry).with(0, firstEntry));',
     'items.map((item) => [item.key, item.value]);',
     'Object.entries(value).map(([key, item]) => [key, transform(item)]);',
     'Reflect.fromEntries(items.map((item) => [item.key, item.value]));',
@@ -61,6 +64,33 @@ runTest({
       }
       declare const collection: Collection;
       Object.fromEntries(collection.flatMap((value) => [String(value), value]));
+    `,
+    dedent`
+      interface Collection {
+        filter(callback: (value: number) => boolean): Map<string, number>
+      }
+      declare const collection: Collection;
+      Object.fromEntries(collection.filter((value) => value > 0));
+    `,
+    dedent`
+      interface Collection {
+        toReversed(): Map<string, number>
+      }
+      declare const collection: Collection;
+      Object.fromEntries(collection.toReversed());
+    `,
+    // A `Map` iterator is not an array being needlessly materialized.
+    dedent`
+      declare const map: Map<string, number>;
+      Object.fromEntries(map.entries());
+    `,
+    dedent`
+      declare const map: Map<string, number>;
+      Object.fromEntries(map.keys());
+    `,
+    dedent`
+      declare const map: Map<string, number>;
+      Object.fromEntries(map.values());
     `
   ],
   invalid: [
@@ -141,6 +171,67 @@ runTest({
         messageId: 'preferReduce',
         data: { method: 'reduceRight' }
       }]
+    },
+    {
+      code: 'Object.fromEntries(items.filter(isEntry));',
+      errors: [{ messageId: 'preferFilterReduce' }]
+    },
+    {
+      // `.reduceRight()` visits the entries in the reversed order already.
+      code: dedent`
+        declare const entries: Array<[string, number]>;
+        Object.fromEntries(entries.toReversed());
+      `,
+      errors: [{ messageId: 'preferReverseReduce' }]
+    },
+    {
+      code: dedent`
+        declare const items: Array<{ id: string, name: string }>;
+        Object.fromEntries(items.map((item) => [item.id, item.name]).toReversed());
+      `,
+      errors: [{ messageId: 'preferReverseReduce' }]
+    },
+    {
+      // `.values()` is a pass-through; the reducer already iterates values.
+      code: dedent`
+        declare const entries: Array<[string, number]>;
+        Object.fromEntries(entries.values());
+      `,
+      errors: [{
+        messageId: 'preferReduce',
+        data: { method: 'values' }
+      }]
+    },
+    {
+      // `.keys()` yields indices, which a reducer receives as its third argument.
+      code: dedent`
+        declare const items: string[];
+        Object.fromEntries(items.keys());
+      `,
+      errors: [{
+        messageId: 'preferReduce',
+        data: { method: 'keys' }
+      }]
+    },
+    {
+      // The filtered entries can be skipped inside the reducer instead.
+      code: dedent`
+        declare const patched: Record<string, unknown>;
+        Object.fromEntries(
+          Object.entries(patched).filter((entry) => entry[1] !== null)
+        );
+      `,
+      errors: [{ messageId: 'preferFilterReduce' }]
+    },
+    {
+      // Only the outermost call is reported, once per `Object.fromEntries()`.
+      code: dedent`
+        declare const items: Array<{ id: string, name: string } | null>;
+        Object.fromEntries(
+          items.map((item) => item && [item.id, item.name]).filter(Boolean)
+        );
+      `,
+      errors: [{ messageId: 'preferFilterReduce' }]
     },
     {
       code: dedent`
