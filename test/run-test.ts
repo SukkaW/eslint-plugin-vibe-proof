@@ -46,7 +46,7 @@ interface RunOptions<TOptions extends readonly unknown[], TMessageIds extends st
   invalid: Array<InvalidTestCaseWithNumberFormOfErrors<TMessageIds, TOptions>>
 }
 
-function runTest<TOptions extends readonly unknown[], TMessageIds extends string>(
+export function runTest<TOptions extends readonly unknown[], TMessageIds extends string>(
   { module: mod, valid, invalid }: RunOptions<TOptions, TMessageIds>,
   extraRules?: Record<string, TSESLint.AnyRuleModule>,
   withTypedLinting = true
@@ -99,8 +99,6 @@ function runTest<TOptions extends readonly unknown[], TMessageIds extends string
     })) as Array<InvalidTestCase<TMessageIds, TOptions>>
   });
 }
-
-export { runTest };
 
 runTest.skip = noop as <TOptions extends readonly unknown[], TMessageIds extends string>(
   _args: RunOptions<TOptions, TMessageIds>
