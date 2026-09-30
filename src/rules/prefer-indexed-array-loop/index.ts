@@ -169,8 +169,9 @@ export default createRule({
 
         const arrayText = sourceCode.getText(array);
         const entriesBinding = entriesCall == null ? null : getEntriesBinding(node);
+        const indexName = ['i', 'j', 'k'].find(name => isNameFree(sourceCode, node, name));
         const canFix = isSimpleTarget(array)
-          && isNameFree(sourceCode, node, 'i')
+          && indexName != null
           && isNameFree(sourceCode, node, 'len')
           && !mayMutateArray(sourceCode, node.body, arrayText)
           && (
@@ -187,10 +188,10 @@ export default createRule({
           messageId: 'noForOfArray',
           fix: canFix
             ? (fixer) => {
-              const header = `for (let i = 0, len = ${arrayText}.length; i < len; i++) `;
+              const header = `for (let ${indexName} = 0, len = ${arrayText}.length; ${indexName} < len; ${indexName}++) `;
               const decl = entriesBinding == null
-                ? `${sourceCode.getText(node.left)} = ${arrayText}[i];`
-                : `${entriesBinding.kind} ${sourceCode.getText(entriesBinding.index)} = i, ${sourceCode.getText(entriesBinding.value)} = ${arrayText}[i];`;
+                ? `${sourceCode.getText(node.left)} = ${arrayText}[${indexName}];`
+                : `${entriesBinding.kind} ${sourceCode.getText(entriesBinding.index)} = ${indexName}, ${sourceCode.getText(entriesBinding.value)} = ${arrayText}[${indexName}];`;
 
               const replacement = node.body.type === AST_NODE_TYPES.BlockStatement
                 ? `${header}{ ${decl}${sourceCode.getText(node.body).slice(1)}`

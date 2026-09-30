@@ -35,6 +35,161 @@ runTest({
       `,
       errors: [{ messageId: 'noForOfArray' }]
     },
+    // Prefer `i` when it is free, even if `j` is already in scope
+    {
+      code: dedent`
+        declare const arr: number[];
+        declare const j: number;
+        for (const x of arr) {
+          console.log(x, j);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        declare const j: number;
+        for (let i = 0, len = arr.length; i < len; i++) { const x = arr[i];
+          console.log(x, j);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Fall back to `j` when `i` is in scope, even if it is unused in the loop
+    {
+      code: dedent`
+        declare const arr: number[];
+        declare const i: number;
+        for (const x of arr) {
+          console.log(x);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        declare const i: number;
+        for (let j = 0, len = arr.length; j < len; j++) { const x = arr[j];
+          console.log(x);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // The loop binding can also occupy `i`, including with an unbraced body
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (const i of arr) console.log(i);
+      `,
+      output: dedent`
+        declare const arr: number[];
+        for (let j = 0, len = arr.length; j < len; j++) { const i = arr[j]; console.log(i); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Use the fallback for both the `.entries()` index and array access
+    {
+      code: dedent`
+        declare const specs: string[];
+        for (const [i, rawSpec] of specs.entries()) {
+          console.log(i, rawSpec);
+        }
+      `,
+      output: dedent`
+        declare const specs: string[];
+        for (let j = 0, len = specs.length; j < len; j++) { const i = j, rawSpec = specs[j];
+          console.log(i, rawSpec);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // An unresolved reference to `i` in the body must not be captured
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (const x of arr) {
+          console.log(x, i);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        for (let j = 0, len = arr.length; j < len; j++) { const x = arr[j];
+          console.log(x, i);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Fall back to `k` when both `i` and `j` are in scope
+    {
+      code: dedent`
+        declare const arr: number[];
+        declare const i: number;
+        declare const j: number;
+        for (const x of arr) {
+          console.log(x);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        declare const i: number;
+        declare const j: number;
+        for (let k = 0, len = arr.length; k < len; k++) { const x = arr[k];
+          console.log(x);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Fall back to `k` without capturing references inside the loop
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (const i of arr) {
+          console.log(i, j);
+        }
+      `,
+      output: dedent`
+        declare const arr: number[];
+        for (let k = 0, len = arr.length; k < len; k++) { const i = arr[k];
+          console.log(i, j);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Both `.entries()` bindings occupy candidates — use `k` throughout the fix
+    {
+      code: dedent`
+        declare const specs: string[];
+        for (const [i, j] of specs.entries()) {
+          console.log(i, j);
+        }
+      `,
+      output: dedent`
+        declare const specs: string[];
+        for (let k = 0, len = specs.length; k < len; k++) { const i = k, j = specs[k];
+          console.log(i, j);
+        }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // All three names are in scope — report without fix
+    {
+      code: dedent`
+        declare const arr: number[];
+        declare const i: number;
+        declare const j: number;
+        declare const k: number;
+        for (const x of arr) {
+          console.log(x);
+        }
+      `,
+      output: null,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // The last fallback must also avoid capturing references inside the loop
+    {
+      code: dedent`
+        declare const arr: number[];
+        for (const i of arr) console.log(i, j, k);
+      `,
+      output: null,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
     // Array `.entries()` is reported even when the binding cannot be safely
     // rewritten without retaining the entry tuple allocation
     {
