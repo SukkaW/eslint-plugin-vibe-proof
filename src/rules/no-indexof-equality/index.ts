@@ -56,17 +56,13 @@ export default createRule({
           }
         }
 
-        if (compareIndex === undefined || indexOfCall == null) return;
-
-        if (
-          indexOfCall.callee.type !== AST_NODE_TYPES.MemberExpression
+        if (compareIndex === undefined || indexOfCall?.callee.type !== AST_NODE_TYPES.MemberExpression
           || ASTUtils.getPropertyName(
             indexOfCall.callee,
             sourceCode.getScope(indexOfCall.callee)
           ) !== 'indexOf'
           || indexOfCall.arguments.length !== 1
-          || indexOfCall.arguments[0].type === AST_NODE_TYPES.SpreadElement
-        ) {
+          || indexOfCall.arguments[0].type === AST_NODE_TYPES.SpreadElement) {
           return;
         }
 

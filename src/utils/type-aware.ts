@@ -140,8 +140,10 @@ export function isDefinitelyDataPropertyAccess(
     const symbol = constituent.getProperty(propertyName);
     // No declared symbol means an index signature, a `Proxy`, or a property the
     // checker cannot see — all of which may run code on access.
-    if (symbol == null) return false;
-    if (getBit(symbol.flags, ACCESSOR_SYMBOL_FLAGS)) return false;
+    if (
+      symbol == null
+      || getBit(symbol.flags, ACCESSOR_SYMBOL_FLAGS)
+    ) return false;
 
     const declarations = symbol.getDeclarations();
     if (declarations == null || declarations.length === 0) return false;

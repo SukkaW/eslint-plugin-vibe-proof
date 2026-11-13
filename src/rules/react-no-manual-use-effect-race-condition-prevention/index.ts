@@ -78,10 +78,7 @@ function hasManualCancellationPattern(
       if (!hasCleanupWrite) continue;
 
       const hasConditionRead = variable.references.some((ref) => {
-        if (ref.identifier.type !== AST_NODE_TYPES.Identifier) return false;
-        if (ref.isWrite()) return false;
-        if (!isRangeInside(ref.identifier.range, callback.range)) return false;
-        if (cleanupFns.some((cleanupFn) => isRangeInside(ref.identifier.range, cleanupFn.range))) return false;
+        if ((ref.identifier.type !== AST_NODE_TYPES.Identifier) || ref.isWrite() || !isRangeInside(ref.identifier.range, callback.range) || cleanupFns.some((cleanupFn) => isRangeInside(ref.identifier.range, cleanupFn.range))) return false;
         return isConditionLikeReference(ref.identifier, callback);
       });
 

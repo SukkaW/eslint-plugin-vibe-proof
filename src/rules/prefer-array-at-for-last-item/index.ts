@@ -111,8 +111,7 @@ export default createRule({
         }
 
         const receiver = node.object;
-        if (receiver.type === AST_NODE_TYPES.Super) return;
-        if (!supportsAt(receiver)) return;
+        if ((receiver.type === AST_NODE_TYPES.Super) || !supportsAt(receiver)) return;
 
         const receiverText = sourceCode.getText(receiver);
         if (receiverText !== sourceCode.getText(index.left.object)) return;

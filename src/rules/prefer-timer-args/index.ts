@@ -68,11 +68,7 @@ export default createRule({
 
     return {
       CallExpression(node) {
-        if (!isTimerCall(node, sourceCode)) {
-          return;
-        }
-
-        if (node.arguments.length < 2) {
+        if (!isTimerCall(node, sourceCode) || (node.arguments.length < 2)) {
           return;
         }
 
@@ -136,11 +132,7 @@ export default createRule({
           }
 
           const bindContext = bindCall.arguments[0];
-          if (bindContext.type === AST_NODE_TYPES.SpreadElement) {
-            return;
-          }
-
-          if (isNullish(bindContext) === false) {
+          if ((bindContext.type === AST_NODE_TYPES.SpreadElement) || (isNullish(bindContext) === false)) {
             return;
           }
 

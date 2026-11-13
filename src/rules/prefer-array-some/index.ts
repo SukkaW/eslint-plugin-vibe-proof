@@ -67,8 +67,7 @@ function reportFilterLength(
   filterLengthCall: TSESTree.MemberExpression,
   shouldNegate: boolean
 ) {
-  if (filterLengthCall.object.type !== AST_NODE_TYPES.CallExpression) return;
-  if (filterLengthCall.object.callee.type !== AST_NODE_TYPES.MemberExpression) return;
+  if ((filterLengthCall.object.type !== AST_NODE_TYPES.CallExpression) || (filterLengthCall.object.callee.type !== AST_NODE_TYPES.MemberExpression)) return;
 
   const sourceCode = context.sourceCode;
   const arrayText = sourceCode.getText(filterLengthCall.object.callee.object);

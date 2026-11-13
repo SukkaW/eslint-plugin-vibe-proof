@@ -57,8 +57,7 @@ export default createRule({
       'Program:exit': function () {
         for (let i = 0, len = pendingCalls.length; i < len; i++) {
           const { callerVar, node } = pendingCalls[i];
-          if (!setterToStateVar.has(callerVar)) continue;
-          if (node.arguments.length === 0) continue;
+          if (!setterToStateVar.has(callerVar) || (node.arguments.length === 0)) continue;
           const stateVar = setterToStateVar.get(callerVar)!;
           const arg = node.arguments[0];
           if (isFunction(arg)) continue;

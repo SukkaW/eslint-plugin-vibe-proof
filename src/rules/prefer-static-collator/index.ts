@@ -50,14 +50,12 @@ export default createRule({
     const { sourceCode } = context;
     return {
       CallExpression(node) {
-        if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
-        if (ASTUtils.getPropertyName(
+        if ((node.callee.type !== AST_NODE_TYPES.MemberExpression) || (ASTUtils.getPropertyName(
           node.callee,
           sourceCode.getScope(node.callee)
-        ) !== 'localeCompare') return;
+        ) !== 'localeCompare')) return;
         const fn = findEnclosingCallback(node);
-        if (!fn) return;
-        if (!isComparatorCallback(fn, sourceCode)) return;
+        if (!fn || !isComparatorCallback(fn, sourceCode)) return;
         context.report({ node, messageId: 'preferStaticCollator' });
       }
     };

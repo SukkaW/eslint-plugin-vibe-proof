@@ -87,8 +87,7 @@ export function getImportedName(
 
   const variable = findVariable(sourceCode.getScope(node), node);
   const def = variable?.defs[0];
-  if (def?.parent?.type !== AST_NODE_TYPES.ImportDeclaration) return null;
-  if (def.node.type !== AST_NODE_TYPES.ImportSpecifier) return null;
+  if ((def?.parent?.type !== AST_NODE_TYPES.ImportDeclaration) || (def.node.type !== AST_NODE_TYPES.ImportSpecifier)) return null;
 
   const { imported } = def.node;
   return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;

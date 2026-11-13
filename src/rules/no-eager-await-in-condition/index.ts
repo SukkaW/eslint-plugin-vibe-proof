@@ -190,8 +190,7 @@ function collectReferencedNames(
 function isPlainIdentifierBinding(variable: TSESLint.Scope.Variable): boolean {
   for (let i = 0, len = variable.defs.length; i < len; i++) {
     const { name } = variable.defs[i];
-    if (name.parent.type !== AST_NODE_TYPES.VariableDeclarator) return false;
-    if (name.parent.id.type !== AST_NODE_TYPES.Identifier) return false;
+    if ((name.parent.type !== AST_NODE_TYPES.VariableDeclarator) || (name.parent.id.type !== AST_NODE_TYPES.Identifier)) return false;
   }
   return variable.defs.length > 0;
 }

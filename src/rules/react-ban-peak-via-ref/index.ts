@@ -89,8 +89,7 @@ export default createRule({
       }
 
       const def = resolveVariable(left.object)?.defs.at(0);
-      if (def?.type !== TSESLint.Scope.DefinitionType.Variable) return false;
-      if (def.node.init == null) return false;
+      if ((def?.type !== TSESLint.Scope.DefinitionType.Variable) || (def.node.init == null)) return false;
 
       const init = unwrapExpression(def.node.init);
       if (!isHookCall(init)) return false;
@@ -246,8 +245,7 @@ export default createRule({
 
     // `if (<reads ref.current>) return;`
     function isEarlyReturnGuard(stmt: TSESTree.Statement, refName: string): boolean {
-      if (stmt.type !== AST_NODE_TYPES.IfStatement) return false;
-      if (!conditionReadsRefCurrent(stmt.test, refName)) return false;
+      if ((stmt.type !== AST_NODE_TYPES.IfStatement) || !conditionReadsRefCurrent(stmt.test, refName)) return false;
 
       const body = stmt.consequent;
       if (body.type === AST_NODE_TYPES.ReturnStatement) return true;
@@ -278,8 +276,7 @@ export default createRule({
 
     return {
       AssignmentExpression(node) {
-        if (node.operator !== '=') return;
-        if (!isRefCurrentTarget(node.left)) return;
+        if ((node.operator !== '=') || !isRefCurrentTarget(node.left)) return;
 
         const kind = classifyExpression(node.right, new Set());
         if (kind == null) return;

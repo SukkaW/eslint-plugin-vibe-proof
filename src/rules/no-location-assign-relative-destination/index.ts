@@ -36,9 +36,7 @@ export default createRule({
         if (!isMemberExprWithNamedProperty(callee, 'assign')) return;
 
         const rootIdentifier = getLocationRootIdentifier(callee.object);
-        if (!rootIdentifier) return;
-        if (!isGlobalReference(sourceCode, rootIdentifier)) return;
-        if (args.length < 1) return;
+        if (!rootIdentifier || !isGlobalReference(sourceCode, rootIdentifier) || (args.length < 1)) return;
 
         const firstArg = args[0];
         if (firstArg.type === AST_NODE_TYPES.SpreadElement) return;
@@ -61,8 +59,7 @@ export default createRule({
         if (!isMemberExprWithNamedProperty(left, 'href')) return;
 
         const rootIdentifier = getLocationRootIdentifier(left.object);
-        if (!rootIdentifier) return;
-        if (!isGlobalReference(sourceCode, rootIdentifier)) return;
+        if (!rootIdentifier || !isGlobalReference(sourceCode, rootIdentifier)) return;
 
         const value = getStaticStringPrefix(right, sourceCode);
         if (value !== null && isRelativeUrl(value)) {
@@ -128,8 +125,7 @@ function isGlobalReference(
   sourceCode: SourceCodeWithScopeManager,
   node: TSESTree.Node | null
 ): boolean {
-  if (!node) return false;
-  if (node.type !== AST_NODE_TYPES.Identifier) return false;
+  if (node?.type !== AST_NODE_TYPES.Identifier) return false;
 
   const variable = sourceCode.scopeManager.scopes[0].set.get(node.name);
 

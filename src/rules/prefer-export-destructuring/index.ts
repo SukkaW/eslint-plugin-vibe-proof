@@ -50,8 +50,7 @@ export default createRule({
   create(context) {
     return {
       'Program > VariableDeclaration[kind="const"] > VariableDeclarator': (node: TSESTree.VariableDeclarator) => {
-        if (node.id.type !== AST_NODE_TYPES.Identifier) return;
-        if (node.init == null) return;
+        if ((node.id.type !== AST_NODE_TYPES.Identifier) || (node.init == null)) return;
         // The temporary itself must not be exported
         if (node.parent.parent.type === AST_NODE_TYPES.ExportNamedDeclaration) return;
 

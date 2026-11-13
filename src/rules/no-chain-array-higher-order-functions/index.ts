@@ -57,13 +57,7 @@ export default createRule({
 });
 
 function isArrayHigherOrderFunction(node: TSESTree.Node): node is TSESTree.MemberExpressionNonComputedName {
-  if (node.type !== AST_NODE_TYPES.MemberExpression) {
-    return false;
-  }
-  if (node.computed) {
-    return false;
-  }
-  if (node.property.type !== AST_NODE_TYPES.Identifier) {
+  if ((node.type !== AST_NODE_TYPES.MemberExpression) || node.computed || (node.property.type !== AST_NODE_TYPES.Identifier)) {
     return false;
   }
   return ARRAY_HIGH_ORDER_FUNCTIONS.has(node.property.name) && node.parent.type === AST_NODE_TYPES.CallExpression;

@@ -136,9 +136,7 @@ export default createRule({
         // Only setState calls inside the effect callback matter
         if (!isRangeInside(node.range, callback.range)) return;
 
-        if (!isInAsyncContext(node, callback, visitorKeys)) return;
-
-        if (isStalenessGuarded(node, callback, visitorKeys)) return;
+        if (!isInAsyncContext(node, callback, visitorKeys) || isStalenessGuarded(node, callback, visitorKeys)) return;
 
         context.report({ node, messageId: 'default' });
       }
@@ -237,8 +235,7 @@ function conditionReferencesGuard(test: TSESTree.Expression, guardNames: Set<str
 
 // `if (guard) return;` / `if (signal.aborted) return;`
 function isEarlyReturnGuard(stmt: TSESTree.Statement, guardNames: Set<string>, visitorKeys: VisitorKeys): boolean {
-  if (stmt.type !== AST_NODE_TYPES.IfStatement) return false;
-  if (!conditionReferencesGuard(stmt.test, guardNames, visitorKeys)) return false;
+  if ((stmt.type !== AST_NODE_TYPES.IfStatement) || !conditionReferencesGuard(stmt.test, guardNames, visitorKeys)) return false;
 
   const body = stmt.consequent;
   if (body.type === AST_NODE_TYPES.ReturnStatement) return true;

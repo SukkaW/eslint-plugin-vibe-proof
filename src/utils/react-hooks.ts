@@ -288,8 +288,10 @@ export function isSetStateCallee(
   }
 
   // `setXxx(...)` — a setter identifier
-  if (node.type !== AST_NODE_TYPES.Identifier) return false;
-  if (!RE_SETTER_NAME.test(node.name)) return false;
+  if (
+    node.type !== AST_NODE_TYPES.Identifier
+    || !RE_SETTER_NAME.test(node.name)
+  ) return false;
 
   return isReactiveOriginIdentifier(sourceCode, node);
 }

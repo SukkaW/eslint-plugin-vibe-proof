@@ -99,8 +99,7 @@ export default createRule({
     return {
       VariableDeclarator(node) {
         const { id, init } = node;
-        if (init == null) return;
-        if (!isUseMemoCall(init)) return;
+        if ((init == null) || !isUseMemoCall(init)) return;
 
         const callNode = init;
         if (callNode.arguments.length < 2) return;

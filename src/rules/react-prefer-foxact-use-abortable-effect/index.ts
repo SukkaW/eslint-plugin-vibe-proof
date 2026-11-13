@@ -71,14 +71,11 @@ function getMethodCall(
   node: TSESTree.Node,
   methodName: 'addEventListener' | 'removeEventListener'
 ): TSESTree.CallExpression | null {
-  if (node.type !== AST_NODE_TYPES.CallExpression || node.optional) return null;
-  if (
-    node.callee.type !== AST_NODE_TYPES.MemberExpression
+  if (node.type !== AST_NODE_TYPES.CallExpression || node.optional || node.callee.type !== AST_NODE_TYPES.MemberExpression
     || node.callee.optional
     || node.callee.computed
     || node.callee.property.type !== AST_NODE_TYPES.Identifier
-    || node.callee.property.name !== methodName
-  ) {
+    || node.callee.property.name !== methodName) {
     return null;
   }
   return node;
@@ -105,8 +102,7 @@ function getStaticCapture(options: TSESTree.Expression | null): boolean | null {
 
   for (let i = options.properties.length - 1; i >= 0; i--) {
     const property = options.properties[i];
-    if (property.type === AST_NODE_TYPES.SpreadElement) continue;
-    if (getPropertyName(property) !== 'capture') continue;
+    if ((property.type === AST_NODE_TYPES.SpreadElement) || (getPropertyName(property) !== 'capture')) continue;
     if (
       property.value.type !== AST_NODE_TYPES.Literal
       || typeof property.value.value !== 'boolean'
@@ -123,8 +119,7 @@ function parseEventListenerCall(
   methodName: 'addEventListener' | 'removeEventListener'
 ): EventListenerCall | null {
   const call = getMethodCall(node, methodName);
-  if (call == null || call.arguments.length < 2 || call.arguments.length > 3) return null;
-  if (call.callee.type !== AST_NODE_TYPES.MemberExpression) return null;
+  if (call == null || call.arguments.length < 2 || call.arguments.length > 3 || (call.callee.type !== AST_NODE_TYPES.MemberExpression)) return null;
 
   const [eventName, listener] = call.arguments;
   const options = call.arguments.length === 3 ? call.arguments[2] : null;
@@ -258,8 +253,7 @@ function hasMatchingSignalOption(
 ): boolean | null {
   for (let i = 0, len = options.properties.length; i < len; i++) {
     const property = options.properties[i];
-    if (property.type === AST_NODE_TYPES.SpreadElement) continue;
-    if (getPropertyName(property) !== 'signal') continue;
+    if ((property.type === AST_NODE_TYPES.SpreadElement) || (getPropertyName(property) !== 'signal')) continue;
     return property.value.type === AST_NODE_TYPES.Identifier
       && property.value.name === signalName;
   }
@@ -300,8 +294,7 @@ function fixOptions(
     return fixer.replaceText(options, `{ capture: ${sourceCode.getText(options)}, ${signalProperty} }`);
   }
 
-  if (options.type !== AST_NODE_TYPES.ObjectExpression) return null;
-  if (hasMatchingSignalOption(options, signalName) === true) return null;
+  if ((options.type !== AST_NODE_TYPES.ObjectExpression) || (hasMatchingSignalOption(options, signalName) === true)) return null;
 
   if (options.properties.length === 0) {
     return fixer.replaceText(options, `{ ${signalProperty} }`);

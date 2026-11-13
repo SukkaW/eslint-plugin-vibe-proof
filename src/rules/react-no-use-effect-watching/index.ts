@@ -291,8 +291,7 @@ function isWatchOnlyEffectBody(
   // cleanup function
   let hasCleanup = false;
   walkNodes(callback.body, sourceCode.visitorKeys, (n) => {
-    if (hasCleanup) return false;
-    if (ASTUtils.isFunction(n)) return false;
+    if (hasCleanup || ASTUtils.isFunction(n)) return false;
     if (n.type === AST_NODE_TYPES.ReturnStatement && n.argument != null) {
       hasCleanup = true;
       return false;

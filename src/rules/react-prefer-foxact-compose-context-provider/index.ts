@@ -61,8 +61,7 @@ export default createRule({
   create(context) {
     return {
       JSXElement(node) {
-        if (!isProviderLikeElement(node)) return;
-        if (isNestedProviderChainStart(node)) return;
+        if (!isProviderLikeElement(node) || isNestedProviderChainStart(node)) return;
 
         let count = 1;
         let current = node;

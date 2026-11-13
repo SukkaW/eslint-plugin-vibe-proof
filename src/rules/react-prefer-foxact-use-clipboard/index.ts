@@ -55,16 +55,10 @@ function isCopyExecCommand(
   sourceCode: TSESLint.SourceCode,
   node: TSESTree.CallExpression
 ): boolean {
-  if (
-    node.callee.type !== AST_NODE_TYPES.MemberExpression
+  if (node.callee.type !== AST_NODE_TYPES.MemberExpression
     || node.callee.computed
     || node.callee.property.type !== AST_NODE_TYPES.Identifier
-    || node.callee.property.name !== 'execCommand'
-  ) {
-    return false;
-  }
-
-  if (!isDocumentObject(sourceCode, node.callee.object)) return false;
+    || node.callee.property.name !== 'execCommand' || !isDocumentObject(sourceCode, node.callee.object)) return false;
 
   const [firstArg] = node.arguments;
   return firstArg?.type === AST_NODE_TYPES.Literal

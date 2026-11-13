@@ -25,8 +25,7 @@ export default createRule({
       const props = new Set<string>();
       for (let i = 0, len = node.attributes.length; i < len; i++) {
         const attr = node.attributes[i];
-        if (attr.type === AST_NODE_TYPES.JSXSpreadAttribute) continue;
-        if (attr.name.type === AST_NODE_TYPES.JSXNamespacedName) continue;
+        if ((attr.type === AST_NODE_TYPES.JSXSpreadAttribute) || (attr.name.type === AST_NODE_TYPES.JSXNamespacedName)) continue;
         props.add(attr.name.name);
       }
       for (let i = 0, len = CONTROLLED_PAIRS.length; i < len; i++) {

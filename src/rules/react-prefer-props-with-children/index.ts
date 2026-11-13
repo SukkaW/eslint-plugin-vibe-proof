@@ -28,8 +28,7 @@ function isChildrenOnlyTypeLiteral(node: TSESTree.TSTypeLiteral): boolean {
   if (props.length !== 1) return false;
 
   const prop = props[0];
-  if (prop.key.type !== AST_NODE_TYPES.Identifier || prop.key.name !== 'children') return false;
-  if (prop.typeAnnotation == null) return false;
+  if (prop.key.type !== AST_NODE_TYPES.Identifier || prop.key.name !== 'children' || (prop.typeAnnotation == null)) return false;
 
   return isReactNodeType(prop.typeAnnotation.typeAnnotation);
 }

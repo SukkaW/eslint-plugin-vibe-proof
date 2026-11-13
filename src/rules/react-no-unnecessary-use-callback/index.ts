@@ -69,8 +69,7 @@ export default createRule({
     return {
       VariableDeclarator(node) {
         const { id, init } = node;
-        if (init == null) return;
-        if (!isUseCallbackCall(init)) return;
+        if ((init == null) || !isUseCallbackCall(init)) return;
 
         const callNode = init;
         const [arg0, arg1] = callNode.arguments as [TSESTree.CallExpressionArgument | undefined, TSESTree.CallExpressionArgument | undefined];

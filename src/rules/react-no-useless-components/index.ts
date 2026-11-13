@@ -238,16 +238,10 @@ function tryBuildFix(
     const usage = usages[i];
     const usageElement = usage.parent;
 
-    if (
-      usage.attributes.length > 0
+    if (usage.attributes.length > 0
       || !usageElement.children.every(
         (child) => child.type === AST_NODE_TYPES.JSXText && child.value.trim() === ''
-      )
-    ) {
-      return null;
-    }
-
-    if (ASTUtils.findVariable(sourceCode.getScope(usage.name), newName) != null) return null;
+      ) || (ASTUtils.findVariable(sourceCode.getScope(usage.name), newName) != null)) return null;
 
     if (usageElement.range[0] < declTarget.range[1] && getNearestFunctionAncestor(usageElement) == null) {
       return null;
@@ -287,8 +281,7 @@ export default createRule({
     const candidates: Candidate[] = [];
 
     function collect(node: FunctionNode) {
-      if (node.params.length > 0) return;
-      if (!returnsOnlyConstantJsx(node)) return;
+      if ((node.params.length > 0) || !returnsOnlyConstantJsx(node)) return;
 
       let defId: TSESTree.Identifier | null = null;
 

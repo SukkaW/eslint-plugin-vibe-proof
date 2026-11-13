@@ -18,8 +18,7 @@ export default createRule({
   create(context) {
     return {
       VariableDeclarator(node) {
-        if (node.id.type !== AST_NODE_TYPES.ArrayPattern) return;
-        if (node.init == null || !isUseStateLikeCall(node.init)) return;
+        if ((node.id.type !== AST_NODE_TYPES.ArrayPattern) || node.init == null || !isUseStateLikeCall(node.init)) return;
 
         const elements = node.id.elements;
 
