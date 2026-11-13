@@ -1,5 +1,5 @@
 import { createRule } from '@/utils/create-eslint-rule';
-import { walkNodes, unwrapExpression } from '@/utils/ast';
+import { walkNodes, unwrapExpression, isInBooleanContext } from '@/utils/ast';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils, TSESLint } from '@typescript-eslint/utils';
@@ -310,6 +310,10 @@ export default createRule({
           return;
         }
         if (node.operator !== '&&' && node.operator !== '||') return;
+        // Swapping operands keeps the chain's truthiness but not its value:
+        // `(await load()) || []` would become `[] || (await load())`, which is
+        // always `[]`. Only a chain observed as truthy or falsy can be reordered.
+        if (!isInBooleanContext(node)) return;
         checkLogicalChain(node, node.operator);
       },
 

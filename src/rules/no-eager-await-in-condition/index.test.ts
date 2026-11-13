@@ -101,9 +101,10 @@ runTest({
       output: 'async function f(a) { if (a || await getFlag()) { work(); } }',
       errors: [{ messageId: 'eagerAwaitInCondition' }]
     },
+    // Any position that only observes truthiness counts, not just an `if` test.
     {
-      code: 'async function f(cond) { const ok = await getFlag() && cond; return ok; }',
-      output: 'async function f(cond) { const ok = cond && await getFlag(); return ok; }',
+      code: 'async function f(cond) { return (await getFlag() && cond) ? 1 : 2; }',
+      output: 'async function f(cond) { return (cond && await getFlag()) ? 1 : 2; }',
       errors: [{ messageId: 'eagerAwaitInCondition' }]
     },
     // Flag read only inside the branch is still fine to defer.
@@ -245,6 +246,11 @@ runTest({
         if (await getFlag() && bag[key]) { work(); }
       }
     `,
+    // Where the chain's value is used, operand order decides the result:
+    // hoisting the fallback would make it win over the awaited value.
+    'async function f() { const list = (await getList()) || []; return list; }',
+    'async function f(fallback) { return (await getName()) || fallback; }',
+    'async function f(cond) { const ok = await getFlag() && cond; return ok; }',
     // Two awaits: reordering them is a different question, not this rule's.
     'async function f() { if (await getA() && await getB()) { work(); } }',
     // Assignment / update in the later operand is a side effect.
