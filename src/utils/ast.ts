@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import type { TSESLint } from '@typescript-eslint/utils';
-import { findVariable } from '@typescript-eslint/utils/ast-utils';
+import { findVariable, isParenthesized } from '@typescript-eslint/utils/ast-utils';
 
 export const RE_NEWLINE = /\r\n?|\n/;
 
@@ -36,6 +36,19 @@ export function walkNodes(
       }
     }
   }
+}
+
+/**
+ * `getText` leaves out the parentheses wrapping a node. A fix that moves the
+ * node elsewhere must keep them: they may be what holds a sequence, a `??`
+ * or a `||` together.
+ */
+export function getTextWithParens(
+  sourceCode: TSESLint.SourceCode,
+  node: TSESTree.Node
+): string {
+  const text = sourceCode.getText(node);
+  return isParenthesized(node, sourceCode) ? `(${text})` : text;
 }
 
 export function isGlobalReference(

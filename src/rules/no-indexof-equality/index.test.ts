@@ -88,13 +88,27 @@ runTest({
         const str: string = "hello";
         if (str.indexOf("l") === 2) {}
       `
-    }
+    },
+
+    // `indexOf` returns the first match, so a non-zero index is not direct access
+    'const a = ["x", "y", "x"];\nconst ok = a.indexOf("x") === 2;',
+    'const arr: number[] = [1, 2, 3]; const index = 1; arr["indexOf"](2) === index;',
+    'const arr: number[] = [1, 2, 3];\nif (arr.indexOf(2) === 1) {}',
+    'const arr: number[] = [1, 2, 3, 4, 5];\nif (arr.indexOf(4) === 3) {}',
+    'const items: string[] = ["a", "b", "c"];\nconst found = 2 === items.indexOf("c");',
+    'const obj: {items: string[]} = {items: ["a", "b", "c"]};\nif (obj.items.indexOf("c") === 2) {}',
+    // `indexOf` skips holes, while direct access reads them as `undefined`
+    'const a = [, 1];\nconst ok = a.indexOf(undefined) === 0;',
+    'declare const arr: Array<number | undefined>; declare const v: number | undefined; arr.indexOf(v) === 0;',
+    'declare const arr: unknown[]; declare const v: unknown; arr.indexOf(v) === 0;',
+    'declare const arr: any[]; declare const v: any; arr.indexOf(v) === 0;',
+    'function f<T>(arr: T[], v: T) { return arr.indexOf(v) === 0; }'
   ],
 
   invalid: [
     {
-      code: 'const arr: number[] = [1, 2, 3]; const index = 1; arr["indexOf"](2) === index;',
-      output: 'const arr: number[] = [1, 2, 3]; const index = 1; arr[1] === 2;',
+      code: 'const arr: number[] = [1, 2, 3]; const index = 0; arr["indexOf"](1) === index;',
+      output: 'const arr: number[] = [1, 2, 3]; const index = 0; arr[0] === 1;',
       errors: [{ messageId: 'preferDirectAccess' }]
     },
     {
@@ -226,62 +240,6 @@ runTest({
       ]
     },
 
-    // arrays with positive index comparison
-    {
-      code: `
-        const arr: number[] = [1, 2, 3];
-        if (arr.indexOf(2) === 1) {}
-      `,
-      output: `
-        const arr: number[] = [1, 2, 3];
-        if (arr[1] === 2) {}
-      `,
-      errors: [
-        {
-          messageId: 'preferDirectAccess',
-          data: { array: 'arr', item: '2', index: '1' },
-          line: 3,
-          column: 13
-        }
-      ]
-    },
-    {
-      code: `
-        const arr: number[] = [1, 2, 3, 4, 5];
-        if (arr.indexOf(4) === 3) {}
-      `,
-      output: `
-        const arr: number[] = [1, 2, 3, 4, 5];
-        if (arr[3] === 4) {}
-      `,
-      errors: [
-        {
-          messageId: 'preferDirectAccess',
-          data: { array: 'arr', item: '4', index: '3' },
-          line: 3,
-          column: 13
-        }
-      ]
-    },
-    {
-      code: `
-        const items: string[] = ["a", "b", "c"];
-        const found = 2 === items.indexOf("c");
-      `,
-      output: `
-        const items: string[] = ["a", "b", "c"];
-        const found = items[2] === "c";
-      `,
-      errors: [
-        {
-          messageId: 'preferDirectAccess',
-          data: { array: 'items', item: '"c"', index: '2' },
-          line: 3,
-          column: 23
-        }
-      ]
-    },
-
     // using member expressions
     {
       code: `
@@ -303,24 +261,6 @@ runTest({
     },
     {
       code: `
-        const obj: {items: string[]} = {items: ['a', 'b', 'c']};
-        if (obj.items.indexOf("c") === 2) {}
-      `,
-      output: `
-        const obj: {items: string[]} = {items: ['a', 'b', 'c']};
-        if (obj.items[2] === "c") {}
-      `,
-      errors: [
-        {
-          messageId: 'preferDirectAccess',
-          data: { array: 'obj.items', item: '"c"', index: '2' },
-          line: 3,
-          column: 13
-        }
-      ]
-    },
-    {
-      code: `
         function getName(): string {
           return "test";
         }
@@ -333,6 +273,23 @@ runTest({
         if (getName().startsWith("t")) {}
       `,
       errors: [{ messageId: 'preferStartsWith', line: 5, column: 13 }]
+    },
+
+    // Parentheses around the receiver and the searched value must survive
+    {
+      code: 'const t = "hi" as string | undefined, s = "hello";\nconst ok = (t ?? s).indexOf("he") === 0;',
+      output: 'const t = "hi" as string | undefined, s = "hello";\nconst ok = (t ?? s).startsWith("he");',
+      errors: [{ messageId: 'preferStartsWith' }]
+    },
+    {
+      code: 'const a = ["x"], p = "", q = "z";\nconst ok = a.indexOf(p || q) === 0;',
+      output: 'const a = ["x"], p = "", q = "z";\nconst ok = a[0] === (p || q);',
+      errors: [{ messageId: 'preferDirectAccess' }]
+    },
+    {
+      code: 'const a = [1], x = 1, y = 0;\nconst ok = a.indexOf(x | y) === 0;',
+      output: 'const a = [1], x = 1, y = 0;\nconst ok = a[0] === (x | y);',
+      errors: [{ messageId: 'preferDirectAccess' }]
     }
   ]
 });

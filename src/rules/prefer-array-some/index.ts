@@ -1,6 +1,7 @@
 import { createRule } from '@/utils/create-eslint-rule';
 import type { RuleContext } from '@/utils/create-eslint-rule';
-import { isInBooleanContext, isNullish } from '@/utils/ast';
+import { getTextWithParens, isInBooleanContext, isNullish } from '@/utils/ast';
+import { couldBeArrayType, couldBeUndefinedType, getArrayElementType, getTypeAware, isDefinitelyTruthyType } from '@/utils/type-aware';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils } from '@typescript-eslint/utils';
@@ -43,13 +44,34 @@ function reportFind(
   context: RuleContext<MessageIds, unknown[]>,
   node: TSESTree.Node,
   findCall: TSESTree.CallExpression,
-  shouldNegate: boolean
+  shouldNegate: boolean,
+  // what the original code observes about the found element: its truthiness
+  // (`if (arr.find(fn))`) or only whether it is `undefined`
+  observes: 'truthiness' | 'undefined'
 ) {
   if (findCall.callee.type !== AST_NODE_TYPES.MemberExpression) return;
 
   const sourceCode = context.sourceCode;
-  const arrayText = sourceCode.getText(findCall.callee.object);
-  const argsText = findCall.arguments.map(arg => sourceCode.getText(arg)).join(', ');
+  const typeAware = getTypeAware(sourceCode);
+  if (typeAware != null) {
+    const { checker } = typeAware;
+    const receiverType = typeAware.getTypeAtLocation(findCall.callee.object);
+    if (!couldBeArrayType(checker, receiverType)) return;
+
+    // `some` reports a match even when the matched element is falsy (or
+    // `undefined`), where `find` returns that element. Without type
+    // information this cannot be ruled out, so the syntactic check stands.
+    const elementType = getArrayElementType(checker, receiverType);
+    if (
+      elementType == null
+      || (observes === 'truthiness'
+        ? !isDefinitelyTruthyType(checker, elementType)
+        : couldBeUndefinedType(checker, elementType))
+    ) return;
+  }
+
+  const arrayText = getTextWithParens(sourceCode, findCall.callee.object);
+  const argsText = findCall.arguments.map(arg => getTextWithParens(sourceCode, arg)).join(', ');
   const replacement = shouldNegate
     ? `!${arrayText}.some(${argsText})`
     : `${arrayText}.some(${argsText})`;
@@ -70,8 +92,11 @@ function reportFilterLength(
   if ((filterLengthCall.object.type !== AST_NODE_TYPES.CallExpression) || (filterLengthCall.object.callee.type !== AST_NODE_TYPES.MemberExpression)) return;
 
   const sourceCode = context.sourceCode;
-  const arrayText = sourceCode.getText(filterLengthCall.object.callee.object);
-  const argsText = filterLengthCall.object.arguments.map(arg => sourceCode.getText(arg)).join(', ');
+  const typeAware = getTypeAware(sourceCode);
+  if (typeAware != null && !couldBeArrayType(typeAware.checker, typeAware.getTypeAtLocation(filterLengthCall.object.callee.object))) return;
+
+  const arrayText = getTextWithParens(sourceCode, filterLengthCall.object.callee.object);
+  const argsText = filterLengthCall.object.arguments.map(arg => getTextWithParens(sourceCode, arg)).join(', ');
   const replacement = shouldNegate
     ? `!${arrayText}.some(${argsText})`
     : `${arrayText}.some(${argsText})`;
@@ -114,7 +139,7 @@ function checkBinaryExpression(node: TSESTree.BinaryExpression, context: Readonl
 
     if (operator === '===' || operator === '!==') {
       if (nullishType !== 'undefined') return;
-      reportFind(context, node, findCall, operator === '===');
+      reportFind(context, node, findCall, operator === '===', 'undefined');
     }
     return;
   }
@@ -149,7 +174,7 @@ function checkBinaryExpression(node: TSESTree.BinaryExpression, context: Readonl
 function checkUnaryExpression(node: TSESTree.UnaryExpression, context: RuleContext<MessageIds, unknown[]>) {
   const { sourceCode } = context;
   if (node.operator === '!' && isFindCall(node.argument, sourceCode)) {
-    reportFind(context, node, node.argument, true);
+    reportFind(context, node, node.argument, true, 'truthiness');
     return;
   }
 
@@ -164,7 +189,7 @@ function checkUnaryExpression(node: TSESTree.UnaryExpression, context: RuleConte
     && node.argument.operator === '!'
     && isFindCall(node.argument.argument, sourceCode)
   ) {
-    reportFind(context, node, node.argument.argument, false);
+    reportFind(context, node, node.argument.argument, false, 'truthiness');
     return;
   }
 
@@ -215,7 +240,7 @@ export default createRule({
         ) {
           return;
         }
-        if (isInBooleanContext(node)) reportFind(context, node, node, false);
+        if (isInBooleanContext(node)) reportFind(context, node, node, false, 'truthiness');
       },
       MemberExpression(node) {
         if (

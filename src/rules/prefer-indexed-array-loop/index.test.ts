@@ -380,6 +380,105 @@ runTest({
         }
       `,
       errors: [{ messageId: 'uncachedLength' }, { messageId: 'uncachedLength' }]
+    },
+    // An object pattern target must be parenthesized as a statement
+    {
+      code: dedent`
+        let x = 0;
+        const items = [{ x: 1 }];
+        for ({ x } of items) { console.log(x); }
+      `,
+      output: dedent`
+        let x = 0;
+        const items = [{ x: 1 }];
+        for (let i = 0, len = items.length; i < len; i++) { ({ x } = items[i]); console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // The body updates the length, rebinds the array's base object, or may
+    // mutate the array through a call — report without fix
+    {
+      code: dedent`
+        const a = [1, 2, 3];
+        for (let i = 0; i < a.length; i++) { console.log(a[i]); a.length--; }
+      `,
+      errors: [{ messageId: 'uncachedLength' }]
+    },
+    {
+      code: dedent`
+        let box = { items: [1, 2] };
+        for (const x of box.items) { console.log(x); box = { items: [9] }; }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    {
+      code: dedent`
+        declare const box: { items: number[] };
+        for (const x of box.items) { console.log(x); delete box.items; }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    {
+      code: dedent`
+        const a = [3, 4];
+        function g() { a.pop(); }
+        for (const x of a) { g(); console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Any call can reach a member chain through its base
+    {
+      code: dedent`
+        declare const box: { items: number[] };
+        for (const x of box.items) { console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    {
+      code: dedent`
+        declare const box: { items: number[] };
+        for (let i = 0; i < box.items.length; i++) { console.log(box.items[i]); }
+      `,
+      errors: [{ messageId: 'uncachedLength' }]
+    },
+    // ... and an identifier that was handed to other code
+    {
+      code: dedent`
+        const a = [1, 2];
+        keep(a);
+        for (const x of a) { console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    {
+      code: dedent`
+        export const a = [1, 2];
+        for (const x of a) { console.log(x); }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // `await` lets the closure run in the middle of the loop
+    {
+      code: dedent`
+        const a = [1, 2];
+        const pop = () => a.pop();
+        async function run() { for (const x of a) { await null; } }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
+    },
+    // Top-level uses cannot run from inside the loop
+    {
+      code: dedent`
+        const a = [1, 2];
+        a[0] = 3;
+        function f() { for (const x of a) { console.log(x); } }
+      `,
+      output: dedent`
+        const a = [1, 2];
+        a[0] = 3;
+        function f() { for (let i = 0, len = a.length; i < len; i++) { const x = a[i]; console.log(x); } }
+      `,
+      errors: [{ messageId: 'noForOfArray' }]
     }
   ],
   valid: [

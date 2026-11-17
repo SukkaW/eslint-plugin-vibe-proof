@@ -94,14 +94,23 @@ function isNameFree(
 
 const LENGTH_MUTATING_METHODS = new Set(['push', 'pop', 'shift', 'unshift', 'splice']);
 
-// Whether the loop body might change the array's length (or rebind the array),
-// which would make a cached `len` observably stale. Textual match on the array
+// Whether the loop body might change the array's length (or rebind the array,
+// or any object along its member chain — `box` for `box.items`), which would
+// make a cached `len` observably stale. Textual match on the array
 // expression — conservative, but the fix is skipped on a hit, never misapplied.
 function mayMutateArray(
   sourceCode: TSESLint.SourceCode,
   body: TSESTree.Node,
-  arrayText: string
+  array: TSESTree.Node
 ): boolean {
+  const arrayText = sourceCode.getText(array);
+  const writeTargets = new Set([arrayText, `${arrayText}.length`]);
+  let base = array;
+  while (base.type === AST_NODE_TYPES.MemberExpression) {
+    base = base.object;
+    writeTargets.add(sourceCode.getText(base));
+  }
+
   let found = false;
   walkNodes(body, sourceCode.visitorKeys, (n) => {
     if (found) return false;
@@ -116,15 +125,94 @@ function mayMutateArray(
       found = true;
       return false;
     }
-    if (n.type === AST_NODE_TYPES.AssignmentExpression) {
-      const leftText = sourceCode.getText(n.left);
-      if (leftText === arrayText || leftText === `${arrayText}.length`) {
-        found = true;
-        return false;
-      }
+    if (
+      (n.type === AST_NODE_TYPES.AssignmentExpression && writeTargets.has(sourceCode.getText(n.left)))
+      || (n.type === AST_NODE_TYPES.UpdateExpression && writeTargets.has(sourceCode.getText(n.argument)))
+      || (n.type === AST_NODE_TYPES.UnaryExpression && n.operator === 'delete' && writeTargets.has(sourceCode.getText(n.argument)))
+    ) {
+      found = true;
+      return false;
     }
   });
   return found;
+}
+
+// Whether control can leave the loop body while it runs: a call or a `new`
+// (it may run arbitrary code), or an `await` / `yield` (other code runs in
+// between). Function bodies only run when called, so they are not walked.
+function mayRunOtherCode(sourceCode: TSESLint.SourceCode, root: TSESTree.Node): boolean {
+  let found = false;
+  walkNodes(root, sourceCode.visitorKeys, (n) => {
+    if (found || ASTUtils.isFunction(n)) return false;
+    if (
+      n.type === AST_NODE_TYPES.CallExpression
+      || n.type === AST_NODE_TYPES.NewExpression
+      || n.type === AST_NODE_TYPES.TaggedTemplateExpression
+      || n.type === AST_NODE_TYPES.AwaitExpression
+      || n.type === AST_NODE_TYPES.YieldExpression
+    ) {
+      found = true;
+      return false;
+    }
+  });
+  return found;
+}
+
+// Whether this use of the array identifier could hand the array itself to
+// other code. Member access, the loop header and spreading (which copies the
+// elements) cannot; anything else (passing, copying, returning, exporting)
+// is assumed to.
+function isAliasingUse(id: TSESTree.Identifier | TSESTree.JSXIdentifier): boolean {
+  let node: TSESTree.Node = id;
+  while (
+    node.parent.type === AST_NODE_TYPES.TSAsExpression
+    || node.parent.type === AST_NODE_TYPES.TSNonNullExpression
+    || node.parent.type === AST_NODE_TYPES.TSSatisfiesExpression
+    || node.parent.type === AST_NODE_TYPES.TSTypeAssertion
+  ) {
+    node = node.parent;
+  }
+  const parent = node.parent;
+  switch (parent.type) {
+    case AST_NODE_TYPES.MemberExpression:
+    case AST_NODE_TYPES.SpreadElement:
+      return false;
+    case AST_NODE_TYPES.ForOfStatement:
+      return parent.right !== node;
+    default:
+      return true;
+  }
+}
+
+// `mayMutateArray` only sees mutations written in the loop body. Code the body
+// calls can mutate the array too, through any other reference to it. Without
+// following calls, an identifier is only trusted if no other function uses it
+// and it is never passed, copied or exported; a member chain (`this.items`) is
+// reachable from anything that holds its base, so it is never trusted.
+function mayBeMutatedElsewhere(
+  sourceCode: TSESLint.SourceCode,
+  loop: TSESTree.Node,
+  roots: Array<TSESTree.Node | null>,
+  array: TSESTree.Node
+): boolean {
+  if (!roots.some(root => root != null && mayRunOtherCode(sourceCode, root))) return false;
+  if (array.type !== AST_NODE_TYPES.Identifier) return true;
+
+  const variable = ASTUtils.findVariable(sourceCode.getScope(array), array);
+  if (
+    variable == null
+    || variable.defs.length === 0
+    || variable.defs.some(def => def.parent?.parent.type === AST_NODE_TYPES.ExportNamedDeclaration)
+  ) return true;
+
+  const loopFunctionScope = sourceCode.getScope(loop).variableScope;
+  return variable.references.some((ref) => {
+    if (ref.isWriteOnly()) return false;
+    const functionScope = ref.from.variableScope;
+    // top-level code runs once and cannot be re-entered from the loop
+    if (functionScope !== loopFunctionScope && functionScope.block.type !== AST_NODE_TYPES.Program) return true;
+    return isAliasingUse(ref.identifier);
+  });
 }
 
 export default createRule({
@@ -173,7 +261,8 @@ export default createRule({
         const canFix = isSimpleTarget(array)
           && indexName != null
           && isNameFree(sourceCode, node, 'len')
-          && !mayMutateArray(sourceCode, node.body, arrayText)
+          && !mayMutateArray(sourceCode, node.body, array)
+          && !mayBeMutatedElsewhere(sourceCode, node, [node.body], array)
           && (
             entriesCall == null
             || (
@@ -189,8 +278,10 @@ export default createRule({
           fix: canFix
             ? (fixer) => {
               const header = `for (let ${indexName} = 0, len = ${arrayText}.length; ${indexName} < len; ${indexName}++) `;
+              const assignment = `${sourceCode.getText(node.left)} = ${arrayText}[${indexName}]`;
               const decl = entriesBinding == null
-                ? `${sourceCode.getText(node.left)} = ${arrayText}[${indexName}];`
+                // a statement starting with `{` is parsed as a block
+                ? (node.left.type === AST_NODE_TYPES.ObjectPattern ? `(${assignment});` : `${assignment};`)
                 : `${entriesBinding.kind} ${sourceCode.getText(entriesBinding.index)} = ${indexName}, ${sourceCode.getText(entriesBinding.value)} = ${arrayText}[${indexName}];`;
 
               const replacement = node.body.type === AST_NODE_TYPES.BlockStatement
@@ -229,14 +320,14 @@ export default createRule({
 
         for (let i = 0, len = lengthReads.length; i < len; i++) {
           const lengthRead = lengthReads[i];
-          const arrayText = sourceCode.getText(lengthRead.object);
           // a second `.length` read would want the `len` name too — fix only
           // the unambiguous single-read case
           const canFix = lengthReads.length === 1
             && lastDeclarator != null
             && isSimpleTarget(lengthRead.object)
             && isNameFree(sourceCode, node, 'len')
-            && !mayMutateArray(sourceCode, node.body, arrayText);
+            && !mayMutateArray(sourceCode, node.body, lengthRead.object)
+            && !mayBeMutatedElsewhere(sourceCode, node, [node.body, node.test, node.update], lengthRead.object);
 
           context.report({
             node: lengthRead,

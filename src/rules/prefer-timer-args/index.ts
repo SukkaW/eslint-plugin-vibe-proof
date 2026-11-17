@@ -1,5 +1,5 @@
 import { createRule } from '@/utils/create-eslint-rule';
-import { isGlobalReference, isNullish, walkNodes } from '@/utils/ast';
+import { getTextWithParens, isGlobalReference, isNullish, walkNodes } from '@/utils/ast';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils } from '@typescript-eslint/utils';
@@ -47,6 +47,41 @@ function isSafeArgument(
   return !hasThis;
 }
 
+function isReassigned(ref: TSESLint.Scope.Reference): boolean {
+  let references = ref.resolved?.references;
+  if (references == null) {
+    // An unresolved name is a global; every assignment to it ends up in the
+    // outermost scope's `through`
+    let scope = ref.from;
+    while (scope.upper != null) scope = scope.upper;
+    references = scope.through.filter(r => r.identifier.name === ref.identifier.name);
+  }
+  return references.some(r => r.isWrite() && !r.init);
+}
+
+// The arrow evaluates its callee and arguments when the timer fires, the fix
+// evaluates them when it is registered. Only allow what cannot change in
+// between: no spread (it iterates its operand), no property read, and no
+// variable that is ever reassigned.
+function isStableUntilFired(
+  arrow: TSESTree.ArrowFunctionExpression,
+  call: TSESTree.CallExpression,
+  sourceCode: Readonly<TSESLint.SourceCode>
+): boolean {
+  if (
+    call.arguments.some(arg => arg.type === AST_NODE_TYPES.SpreadElement)
+    || sourceCode.getScope(arrow).through.some(isReassigned)
+  ) return false;
+
+  let readsProperty = false;
+  walkNodes(call, sourceCode.visitorKeys, node => {
+    if (node.type !== AST_NODE_TYPES.MemberExpression) return;
+    readsProperty = true;
+    return false;
+  });
+  return !readsProperty;
+}
+
 export default createRule({
   name: 'prefer-timer-args',
   meta: {
@@ -77,7 +112,7 @@ export default createRule({
           return;
         }
 
-        const delayText = sourceCode.getText(node.arguments[1]);
+        const delayText = getTextWithParens(sourceCode, node.arguments[1]);
         const timerCall = sourceCode.getText(node.callee);
 
         let replacement: string | null = null;
@@ -99,12 +134,15 @@ export default createRule({
           }
 
           const callee = firstArg.body.callee;
-          if (callee.type === AST_NODE_TYPES.MemberExpression) {
+          if (callee.type !== AST_NODE_TYPES.Identifier) {
             return;
           }
 
           const callArgs = firstArg.body.arguments;
-          if (!callArgs.every(arg => isSafeArgument(arg, sourceCode))) {
+          if (
+            !callArgs.every(arg => isSafeArgument(arg, sourceCode))
+            || !isStableUntilFired(firstArg, firstArg.body, sourceCode)
+          ) {
             return;
           }
 
@@ -113,7 +151,7 @@ export default createRule({
           if (callArgs.length === 0) {
             replacement = `${timerCall}(${calleeText}, ${delayText})`;
           } else {
-            const argsTexts = callArgs.map((arg) => sourceCode.getText(arg));
+            const argsTexts = callArgs.map((arg) => getTextWithParens(sourceCode, arg));
             replacement = `${timerCall}(${calleeText}, ${delayText}, ${argsTexts.join(', ')})`;
           }
         } else if (firstArg.type === AST_NODE_TYPES.CallExpression) {
@@ -136,7 +174,7 @@ export default createRule({
             return;
           }
 
-          const fnText = sourceCode.getText(bindCall.callee.object);
+          const fnText = getTextWithParens(sourceCode, bindCall.callee.object);
           const bindArgs = bindCall.arguments.slice(1);
 
           // Check if any bind argument contains a call expression or other unsafe construct
@@ -147,7 +185,7 @@ export default createRule({
           if (bindArgs.length === 0) {
             replacement = `${timerCall}(${fnText}, ${delayText})`;
           } else {
-            const argsTexts = bindArgs.map((arg) => sourceCode.getText(arg));
+            const argsTexts = bindArgs.map((arg) => getTextWithParens(sourceCode, arg));
             replacement = `${timerCall}(${fnText}, ${delayText}, ${argsTexts.join(', ')})`;
           }
         } else {

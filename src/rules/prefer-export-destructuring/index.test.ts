@@ -60,42 +60,25 @@ runTest({
     `
   ],
   invalid: [
+    // Without type information only an array literal proves an array; any
+    // other value gets an object pattern, which reads by index like the
+    // original code (array-pattern cases are in the typed block below)
     {
       code: dedent`
         const arr = factory();
         export const XX = arr[0];
         export const YY = arr[1];
       `,
-      output: 'export const [XX, YY] = factory();',
-      errors: [{ messageId: 'default', data: { pattern: '[XX, YY]' } }]
+      output: 'export const { 0: XX, 1: YY } = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: XX, 1: YY }' } }]
     },
-    // Skipped element — holes work in destructuring
     {
       code: dedent`
-        const arr = factory();
+        const arr = [1, 2];
         export const XX = arr[0];
-        export const ZZ = arr[2];
-      `,
-      output: 'export const [XX, , ZZ] = factory();',
-      errors: [{ messageId: 'default', data: { pattern: '[XX, , ZZ]' } }]
-    },
-    // Single element
-    {
-      code: dedent`
-        const arr = factory();
-        export const XX = arr[0];
-      `,
-      output: 'export const [XX] = factory();',
-      errors: [{ messageId: 'default', data: { pattern: '[XX]' } }]
-    },
-    // Out-of-order exports
-    {
-      code: dedent`
-        const arr = factory();
         export const YY = arr[1];
-        export const XX = arr[0];
       `,
-      output: 'export const [XX, YY] = factory();',
+      output: 'export const [XX, YY] = [1, 2];',
       errors: [{ messageId: 'default', data: { pattern: '[XX, YY]' } }]
     },
     // Object property access
@@ -193,7 +176,7 @@ runTest({
         export const XX = arr[0];
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[XX]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: XX }' } }]
     },
     // Export carries an unrelated declarator that must survive — report
     // without fix
@@ -203,7 +186,7 @@ runTest({
         export const XX = arr[0], other = 1;
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[XX]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: XX }' } }]
     },
     // Multiple reads in the same export can be removed as one statement
     {
@@ -232,7 +215,7 @@ runTest({
         export const value = tuple[0];
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[value]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: value }' } }]
     },
     {
       code: dedent`
@@ -240,7 +223,7 @@ runTest({
         export const value: number = tuple[0];
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[value]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: value }' } }]
     },
     // Comments inside replaced or removed nodes must not be discarded
     {
@@ -249,7 +232,7 @@ runTest({
         export const value = tuple[0];
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[value]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: value }' } }]
     },
     {
       code: dedent`
@@ -257,7 +240,70 @@ runTest({
         export /* keep */ const value = tuple[0];
       `,
       output: null,
-      errors: [{ messageId: 'default', data: { pattern: '[value]' } }]
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: value }' } }]
+    },
+    // An array pattern reads through the iterator instead of index access:
+    // non-iterables throw, and strings iterate by code point
+    {
+      code: dedent`
+        const o = { 0: "a", 1: "b" };
+        export const first = o[0];
+        export const second = o[1];
+      `,
+      output: 'export const { 0: first, 1: second } = { 0: "a", 1: "b" };',
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: first, 1: second }' } }]
+    },
+    {
+      code: 'const s = "\\uD83D\\uDE00x";\nexport const first = s[0];\nexport const second = s[1];',
+      output: String.raw`export const { 0: first, 1: second } = "\uD83D\uDE00x";`,
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: first, 1: second }' } }]
     }
   ]
 }, {}, false);
+
+// With type information, a value typed as an array or tuple gets an array pattern
+runTest({
+  module: mod,
+  valid: [],
+  invalid: [
+    {
+      code: 'declare function factory(): number[];\nconst arr = factory();\nexport const XX = arr[0];\nexport const YY = arr[1];',
+      output: 'declare function factory(): number[];\nexport const [XX, YY] = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '[XX, YY]' } }]
+    },
+    // Skipped element — holes work in destructuring
+    {
+      code: 'declare function factory(): number[];\nconst arr = factory();\nexport const XX = arr[0];\nexport const ZZ = arr[2];',
+      output: 'declare function factory(): number[];\nexport const [XX, , ZZ] = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '[XX, , ZZ]' } }]
+    },
+    // Single element
+    {
+      code: 'declare function factory(): number[];\nconst arr = factory();\nexport const XX = arr[0];',
+      output: 'declare function factory(): number[];\nexport const [XX] = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '[XX]' } }]
+    },
+    // Out-of-order exports
+    {
+      code: 'declare function factory(): number[];\nconst arr = factory();\nexport const YY = arr[1];\nexport const XX = arr[0];',
+      output: 'declare function factory(): number[];\nexport const [XX, YY] = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '[XX, YY]' } }]
+    },
+    {
+      code: 'declare function factory(): readonly [string, number];\nconst pair = factory();\nexport const XX = pair[0];\nexport const YY = pair[1];',
+      output: 'declare function factory(): readonly [string, number];\nexport const [XX, YY] = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '[XX, YY]' } }]
+    },
+    // Strings and values of unknown type still get an object pattern
+    {
+      code: 'declare function factory(): string;\nconst s = factory();\nexport const XX = s[0];\nexport const YY = s[1];',
+      output: 'declare function factory(): string;\nexport const { 0: XX, 1: YY } = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: XX, 1: YY }' } }]
+    },
+    {
+      code: 'declare function factory(): any;\nconst arr = factory();\nexport const XX = arr[0];\nexport const YY = arr[1];',
+      output: 'declare function factory(): any;\nexport const { 0: XX, 1: YY } = factory();',
+      errors: [{ messageId: 'default', data: { pattern: '{ 0: XX, 1: YY }' } }]
+    }
+  ]
+});

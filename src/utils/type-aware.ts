@@ -91,6 +91,57 @@ export function isDefinitelyAssignableToType(
   return matchesType(checker, type, (t) => checker.isTypeAssignableTo(t, target), false);
 }
 
+const UNDEFINED_OR_INDETERMINATE_TYPE_FLAGS = setBit(INDETERMINATE_TYPE_FLAGS, setBit(ts.TypeFlags.Undefined, ts.TypeFlags.Void));
+
+/** Whether a value of the type might be `undefined` — any / unknown / unconstrained generics included. */
+export function couldBeUndefinedType(checker: ts.TypeChecker, type: ts.Type): boolean {
+  if (getBit(type.flags, UNDEFINED_OR_INDETERMINATE_TYPE_FLAGS)) return true;
+  if (type.isUnion()) return type.types.some((part) => couldBeUndefinedType(checker, part));
+  if (type.isTypeParameter()) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint == null || constraint === type || couldBeUndefinedType(checker, constraint);
+  }
+  return false;
+}
+
+/** The element type of an array or tuple (or a union of them), `null` when it has none. */
+export function getArrayElementType(checker: ts.TypeChecker, type: ts.Type): ts.Type | null {
+  return checker.getIndexTypeOfType(checker.getNonNullableType(type), ts.IndexKind.Number) ?? null;
+}
+
+const OBJECT_TYPE_FLAGS = setBit(ts.TypeFlags.Object, ts.TypeFlags.NonPrimitive);
+const SYMBOL_TYPE_FLAGS = setBit(ts.TypeFlags.ESSymbol, ts.TypeFlags.UniqueESSymbol);
+
+/** Positive proof that every value of the type is truthy. */
+export function isDefinitelyTruthyType(checker: ts.TypeChecker, type: ts.Type): boolean {
+  if (type.isUnion()) return type.types.every((part) => isDefinitelyTruthyType(checker, part));
+  if (type.isIntersection()) return type.types.some((part) => isDefinitelyTruthyType(checker, part));
+  if (getBit(type.flags, OBJECT_TYPE_FLAGS)) {
+    // object types are structural: `{}` or `{ length: number }` also accept
+    // primitives, falsy ones included
+    return ![
+      checker.getNumberLiteralType(0),
+      checker.getStringLiteralType(''),
+      checker.getBigIntType(),
+      checker.getFalseType(),
+      checker.getNullType(),
+      checker.getUndefinedType()
+    ].some((falsy) => checker.isTypeAssignableTo(falsy, type));
+  }
+  if (getBit(type.flags, SYMBOL_TYPE_FLAGS)) return true;
+  if (type.isStringLiteral()) return type.value !== '';
+  if (type.isNumberLiteral()) return type.value !== 0;
+  if (getBit(type.flags, ts.TypeFlags.BigIntLiteral)) return (type as ts.BigIntLiteralType).value.base10Value !== '0';
+  // a fresh `true` literal is a different object from `getTrueType()`
+  if (getBit(type.flags, ts.TypeFlags.BooleanLiteral)) return type === checker.getTrueType() || checker.typeToString(type) === 'true';
+  // last: the `isTypeParameter` guard would narrow `type` to `never` below it
+  if (type.isTypeParameter()) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint != null && constraint !== type && isDefinitelyTruthyType(checker, constraint);
+  }
+  return false;
+}
+
 // Built-in collections (besides Array) whose callback-taking iteration methods
 // (forEach / map / etc.) invoke the callback synchronously.
 const SYNC_ITERABLE_TYPE_NAMES = new Set<string>([

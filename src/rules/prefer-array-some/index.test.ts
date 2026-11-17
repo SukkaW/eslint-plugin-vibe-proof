@@ -723,6 +723,63 @@ runTest({
           endColumn: 43
         }
       ]
+    },
+
+    // Parentheses around the receiver must survive
+    {
+      code: 'const a = [2], b = [1];\nconst ok = (a || b).find((x) => x === 1) !== undefined;',
+      output: 'const a = [2], b = [1];\nconst ok = (a || b).some((x) => x === 1);',
+      errors: [{ messageId: 'preferArraySome' }]
+    },
+    {
+      code: 'const a = [2], b = [1];\nconst ok = (a || b).filter((x) => x === 1).length === 0;',
+      output: 'const a = [2], b = [1];\nconst ok = !(a || b).some((x) => x === 1);',
+      errors: [{ messageId: 'preferArraySome' }]
     }
   ]
 }, {}, false);
+
+runTest({
+  module: mod,
+  valid: [
+    // A receiver typed as a non-array has no `.some()`
+    'const $items = { filter(s: string) { return [s]; } };\nconst ok = $items.filter(".active").length > 0;',
+    'const $el = { find(s: string) { return [s]; } };\nif ($el.find(".active")) {}',
+    // `find` returns the matched element: a falsy one reads as "not found",
+    // and an `undefined` one compares equal to "not found"
+    'declare const arr: number[];\nif (arr.find((x) => x === 0)) {}',
+    'declare const arr: boolean[];\nconst ok = !!arr.find((x) => !x);',
+    'declare const arr: Array<{}>;\nif (arr.find(() => true)) {}',
+    'declare const arr: Array<string | undefined>;\nconst ok = arr.find((x) => x === undefined) !== undefined;',
+    'declare const arr: any;\nif (arr.find((x: any) => x)) {}'
+  ],
+  invalid: [
+    {
+      code: 'declare const arr: Array<{ id: number }>;\nif (arr.find((x) => x.id === 1)) {}',
+      output: 'declare const arr: Array<{ id: number }>;\nif (arr.some((x) => x.id === 1)) {}',
+      errors: [{ messageId: 'preferArraySome' }]
+    },
+    {
+      code: 'declare const arr: Array<"a" | "b">;\nconst ok = !arr.find((x) => x === "a");',
+      output: 'declare const arr: Array<"a" | "b">;\nconst ok = !arr.some((x) => x === "a");',
+      errors: [{ messageId: 'preferArraySome' }]
+    },
+    {
+      code: 'declare const flags: true[];\nif (flags.find(() => true)) {}',
+      output: 'declare const flags: true[];\nif (flags.some(() => true)) {}',
+      errors: [{ messageId: 'preferArraySome' }]
+    },
+    // Comparing against `undefined` only needs elements that cannot be `undefined`
+    {
+      code: 'declare const arr: number[];\nconst ok = arr.find((x) => x === 0) !== undefined;',
+      output: 'declare const arr: number[];\nconst ok = arr.some((x) => x === 0);',
+      errors: [{ messageId: 'preferArraySome' }]
+    },
+    // `filter().length` counts matches whatever their value
+    {
+      code: 'declare const arr: number[];\nconst ok = arr.filter((x) => x === 0).length > 0;',
+      output: 'declare const arr: number[];\nconst ok = arr.some((x) => x === 0);',
+      errors: [{ messageId: 'preferArraySome' }]
+    }
+  ]
+});

@@ -90,7 +90,17 @@ runTest({
     // Moving side effects out of the callback changes when they run.
     'setTimeout(() => fn(i++), 100)',
     'setTimeout(() => fn(delete obj.value), 100)',
-    ['setTimeout(() => fn(`$', '{getData()}`), 100)'].join('')
+    ['setTimeout(() => fn(`$', '{getData()}`), 100)'].join(''),
+
+    // Timer arguments are evaluated at registration, not when the timer fires
+    'let n = 0;\nsetTimeout(() => log(n), 10);\nn = 5;',
+    'const state = { v: 1 };\nsetTimeout(() => log(state.v), 10);\nstate.v = 2;',
+    'const arr = [1];\nsetTimeout(() => log(...arr), 10);\narr.push(2);',
+    'let handler = a;\nsetTimeout(() => handler(1), 10);\nhandler = b;',
+    'setTimeout(() => fn(...args), 100)',
+    // A call in callee position would run at registration
+    'setTimeout(() => getFn()(1), 10);',
+    'setTimeout(() => (0, obj.fn)(1), 10);'
   ],
 
   invalid: [
@@ -180,17 +190,6 @@ setTimeout(fn2, 200, b, c);`,
     {
       code: 'const timer = setTimeout(() => cleanup(resource), 5000)',
       output: 'const timer = setTimeout(cleanup, 5000, resource)',
-      errors: [
-        {
-          messageId: 'preferArgs'
-        }
-      ]
-    },
-
-    // With spread arguments in the inner call
-    {
-      code: 'setTimeout(() => fn(...args), 100)',
-      output: 'setTimeout(fn, 100, ...args)',
       errors: [
         {
           messageId: 'preferArgs'
@@ -436,6 +435,35 @@ setInterval(fn2, 200, b);`,
           messageId: 'preferArgs'
         }
       ]
+    },
+
+    // Bindings that are never reassigned keep their value until the timer fires
+    {
+      code: 'const n = 0;\nlet m = 1;\nsetTimeout(() => log(n, m), 10);',
+      output: 'const n = 0;\nlet m = 1;\nsetTimeout(log, 10, n, m);',
+      errors: [{ messageId: 'preferArgs' }]
+    },
+
+    // Parenthesized sequence expressions must keep their parentheses
+    {
+      code: 'setTimeout(() => fn(a), (0, 10));',
+      output: 'setTimeout(fn, (0, 10), a);',
+      errors: [{ messageId: 'preferArgs' }]
+    },
+    {
+      code: 'setTimeout(() => fn((a, b)), 10);',
+      output: 'setTimeout(fn, 10, (a, b));',
+      errors: [{ messageId: 'preferArgs' }]
+    },
+    {
+      code: 'setTimeout((0, obj.fn).bind(null, 1), 10);',
+      output: 'setTimeout((0, obj.fn), 10, 1);',
+      errors: [{ messageId: 'preferArgs' }]
+    },
+    {
+      code: 'setTimeout(fn.bind(null, (a, b)), (0, 10));',
+      output: 'setTimeout(fn, (0, 10), (a, b));',
+      errors: [{ messageId: 'preferArgs' }]
     }
   ]
 });

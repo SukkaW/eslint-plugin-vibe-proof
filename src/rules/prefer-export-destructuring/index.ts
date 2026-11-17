@@ -1,4 +1,6 @@
 import { createRule } from '@/utils/create-eslint-rule';
+import { unwrapExpression } from '@/utils/ast';
+import { getTypeAware, isDefinitelyIndexableArrayType } from '@/utils/type-aware';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { TSESTree } from '@typescript-eslint/types';
 import { ASTUtils } from '@typescript-eslint/utils';
@@ -10,12 +12,14 @@ const RE_VALID_IDENTIFIER = /^[a-z_$][\w$]*$/i;
 // with numeric keys instead: `const { 20: foo } = arr`
 const MAX_ARRAY_PATTERN_INDEX = 10;
 
-function renderPattern(reads: Array<{ key: string, name: string }>): string {
+// An array pattern reads through the iterator rather than by index: it throws
+// on non-iterables and walks strings by code point. `isArray` must be proven.
+function renderPattern(reads: Array<{ key: string, name: string }>, isArray: boolean): string {
   const allInt = reads.every((r) => RE_NON_NEGATIVE_INT.test(r.key));
   const hasDuplicate = new Set(reads.map((r) => r.key)).size !== reads.length;
   const maxIndex = allInt ? Math.max(...reads.map((r) => Number(r.key))) : 0;
 
-  if (allInt && !hasDuplicate && maxIndex <= MAX_ARRAY_PATTERN_INDEX) {
+  if (isArray && allInt && !hasDuplicate && maxIndex <= MAX_ARRAY_PATTERN_INDEX) {
     const indexToName = new Map(reads.map((r) => [Number(r.key), r.name]));
     const elements: string[] = [];
     for (let i = 0; i <= maxIndex; i++) {
@@ -48,6 +52,8 @@ export default createRule({
     schema: []
   },
   create(context) {
+    const typeAware = getTypeAware(context.sourceCode);
+
     return {
       'Program > VariableDeclaration[kind="const"] > VariableDeclarator': (node: TSESTree.VariableDeclarator) => {
         if ((node.id.type !== AST_NODE_TYPES.Identifier) || (node.init == null)) return;
@@ -105,6 +111,12 @@ export default createRule({
 
         const declarationNode = node.parent;
         const program = declarationNode.parent as TSESTree.Program;
+        const init = node.init;
+        const pattern = renderPattern(
+          reads,
+          unwrapExpression(init).type === AST_NODE_TYPES.ArrayExpression
+          || (typeAware != null && isDefinitelyIndexableArrayType(typeAware.checker, typeAware.getTypeAtLocation(init)))
+        );
 
         // The fix moves the member reads up to the temp's position, so nothing
         // may sit between the declaration and the exports — an intervening
@@ -138,7 +150,7 @@ export default createRule({
         context.report({
           node,
           messageId: 'default',
-          data: { pattern: renderPattern(reads) },
+          data: { pattern },
           fix: canFix
             ? (fixer) => {
               const { text } = context.sourceCode;
@@ -148,7 +160,7 @@ export default createRule({
               const fixes = [
                 fixer.replaceText(
                   declarationNode,
-                  `export const ${renderPattern(reads)} = ${initializerText};`
+                  `export const ${pattern} = ${initializerText};`
                 )
               ];
 
